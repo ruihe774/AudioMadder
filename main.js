@@ -1,18 +1,3 @@
-(function()
-{
-	var i=window.navigator.userAgent.search(/Firefox\/\d\d\.\d/);
-	if(i==-1)
-	{
-		alert("Firefox only!");
-		return;
-	}
-	var ver=window.navigator.userAgent.slice(i+8,i+8+4);
-	if(parseFloat(ver)<37.0)
-	{
-		alert("Verison too low!");
-		return;
-	}
-})();
 onload=function()
 {
 	var blackPlrSrc="data:image/bmp;base64,Qk1CAAAAAAAAAD4AAAAoAAAAAQAAAAEAAAABAAEAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAP///wAAAAAA";
