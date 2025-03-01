@@ -3,17 +3,14 @@ import SpectrumVisualizer, { SpectrumVisualizerPalette, SpectrumVisualizerState 
 import styles from "./styles.module.css";
 
 const defaultFFTPower = 12;
-const defaultStepPower = 10;
 const defaultPalette = "sox";
 
 const App: Component<{}> = () => {
     let fileInput!: HTMLInputElement;
     let fftSizeInput!: HTMLInputElement;
-    let stepSizeInput!: HTMLInputElement;
     let paletteInput!: HTMLSelectElement;
     const [audioFile, setAudioFile] = createSignal<File>();
     const [fftPower, setFFTPower] = createSignal(defaultFFTPower);
-    const [stepPower, setStepPower] = createSignal(defaultStepPower);
     const [palette, setPalette] = createSignal<SpectrumVisualizerPalette>(defaultPalette);
     const [state, setState] = createSignal<SpectrumVisualizerState>();
     const [invalid, setInvalid] = createSignal(true);
@@ -28,7 +25,6 @@ const App: Component<{}> = () => {
                     batch(() => {
                         setAudioFile(fileInput.files![0]);
                         setFFTPower(Number(fftSizeInput.value));
-                        setStepPower(Number(stepSizeInput.value));
                         setPalette(paletteInput.value as SpectrumVisualizerPalette);
                         setInvalid(false);
                     });
@@ -37,13 +33,11 @@ const App: Component<{}> = () => {
                     batch(() => {
                         setAudioFile(void 0);
                         setFFTPower(defaultFFTPower);
-                        setStepPower(defaultStepPower);
                         setPalette(defaultPalette);
                         setInvalid(true);
                     });
                     requestIdleCallback(() => {
                         fftSizeInput.value = `${untrack(fftPower)}`;
-                        stepSizeInput.value = `${untrack(stepPower)}`;
                         paletteInput.value = `${untrack(palette)}`;
                     });
                 }}
@@ -53,25 +47,12 @@ const App: Component<{}> = () => {
                     FFT Size: 2^
                     <input
                         type="number"
-                        min="5"
-                        max="15"
+                        min="10"
+                        max="14"
                         step="1"
                         value={defaultFFTPower}
                         required
                         ref={fftSizeInput}
-                        on:change={invalidate}
-                    />
-                </label>
-                <label>
-                    Frame Step: 2^
-                    <input
-                        type="number"
-                        min="10"
-                        max="14"
-                        step="1"
-                        value={defaultStepPower}
-                        required
-                        ref={stepSizeInput}
                         on:change={invalidate}
                     />
                 </label>
@@ -111,13 +92,7 @@ const App: Component<{}> = () => {
                     </Match>
                 </Switch>
             </p>
-            <SpectrumVisualizer
-                blob={audioFile()}
-                fftSize={1 << fftPower()}
-                frameStep={1 << stepPower()}
-                palette={palette()}
-                stateRef={setState}
-            />
+            <SpectrumVisualizer blob={audioFile()} fftSize={1 << fftPower()} palette={palette()} stateRef={setState} />
         </>
     );
 };

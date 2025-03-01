@@ -113,7 +113,6 @@ const palettes = {
 const SpectrumVisualizer: Component<{
     blob?: Blob;
     fftSize: number;
-    frameStep: number;
     palette: SpectrumVisualizerPalette;
     stateRef?: (state: SpectrumVisualizerState) => void;
 }> = (props) => {
@@ -163,11 +162,12 @@ const SpectrumVisualizer: Component<{
         for (let i = 0; i < audioBuffer.numberOfChannels; ++i) {
             const analyser = audioContext.createAnalyser();
             analyser.fftSize = props.fftSize;
+            analyser.smoothingTimeConstant = 0;
             channelSplitter.connect(analyser, i);
             analyser.connect(channelMerger, 0, i);
             analysers.push(analyser);
         }
-        const scriptProcessor = audioContext.createScriptProcessor(props.frameStep, 1, 1);
+        const scriptProcessor = audioContext.createScriptProcessor(props.fftSize, 1, 1);
         channelMerger.connect(scriptProcessor);
         scriptProcessor.connect(audioContext.destination);
         const palette = palettes[props.palette]();
@@ -188,7 +188,7 @@ const SpectrumVisualizer: Component<{
             return canvasRefs.map(([_, ref], i) => {
                 return {
                     ref,
-                    width: ceil(audioBuffer.length / props.frameStep),
+                    width: ceil(audioBuffer.length / props.fftSize),
                     height: audioSystem.analysers[i].frequencyBinCount,
                 };
             });
@@ -224,28 +224,34 @@ const SpectrumVisualizer: Component<{
                     desynchronized: true,
                 })!,
         );
+        const freeBufferList: Uint8Array[] = [];
+        const imageDataList: ImageData[] = renderingContextList.map((renderingContext, i) =>
+            renderingContext.createImageData(1, analysers[i].frequencyBinCount),
+        );
         let step = 0;
         const startTime = performance.now();
         scriptProcessor.onaudioprocess = () => {
             const currentStep = step++;
             const fftBuffers = analysers.map((analyser) => {
-                const fftBuffer = new Uint8Array(analyser.frequencyBinCount);
+                const fftBuffer = freeBufferList.pop() ?? new Uint8Array(analyser.frequencyBinCount);
+                if (fftBuffer.length != analyser.frequencyBinCount) {
+                    throw new Error("invalid buffer");
+                }
                 analyser.getByteFrequencyData(fftBuffer);
                 return fftBuffer;
             });
-            requestIdleCallback(() => {
-                fftBuffers.forEach((fftBuffer, i) => {
-                    const renderingContext = renderingContextList[i];
-                    const { length } = fftBuffer;
-                    const imageData = renderingContext.createImageData(1, length);
-                    const imageView = new DataView(imageData.data.buffer);
-                    fftBuffer.forEach((v, i) => {
-                        imageView.setUint32(4 * (length - i - 1), palette[v], true);
-                    });
-                    renderingContext.putImageData(imageData, currentStep, 0);
+            fftBuffers.forEach((fftBuffer, i) => {
+                const renderingContext = renderingContextList[i];
+                const { length } = fftBuffer;
+                const imageData = imageDataList[i];
+                const imageView = new DataView(imageData.data.buffer);
+                fftBuffer.forEach((v, i) => {
+                    imageView.setUint32(4 * (length - i - 1), palette[v], true);
                 });
-                setProgress((prevStep) => (prevStep as number) + 1);
+                freeBufferList.push(fftBuffer);
+                renderingContext.putImageData(imageData, currentStep, 0);
             });
+            setProgress((prevStep) => (prevStep as number) + 1);
         };
         audioContext
             .startRendering()
@@ -293,7 +299,7 @@ const SpectrumVisualizer: Component<{
             } else if (typeof p == "number") {
                 const buf = audioBuffer();
                 if (buf) {
-                    stateRef?.({ type: "analysing", progress: (p * props.frameStep) / buf.length });
+                    stateRef?.({ type: "analysing", progress: (p * props.fftSize) / buf.length });
                 }
             } else {
                 stateRef?.({ type: "errored", error: p });
