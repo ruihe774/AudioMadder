@@ -186,9 +186,16 @@ const SpectrumVisualizer: Component<{
 
     const [progress, setProgress] = createSignal<number | Error>(0);
     let analysingTotalTime!: number;
+    let analysingAbortController = new AbortController();
+    const resetAnalysing = () => {
+        setProgress(0);
+        analysingAbortController.abort();
+    };
 
     runOn([audioSystem, canvasList], (audioSystem, canvasList) => {
-        const { audioContext, analysers, scriptProcessor, palette } = audioSystem;
+        resetAnalysing();
+        const currentAbortSignal = (analysingAbortController = new AbortController()).signal;
+        const { audioContext, bufferSource, analysers, scriptProcessor, palette } = audioSystem;
         const renderingContextList = canvasList.map(
             (canvas) =>
                 canvas.getContext("2d", {
@@ -219,7 +226,6 @@ const SpectrumVisualizer: Component<{
                 setProgress((prevStep) => (prevStep as number) + 1);
             });
         };
-        setProgress(0);
         audioContext
             .startRendering()
             .then(() => {
@@ -229,6 +235,9 @@ const SpectrumVisualizer: Component<{
             .catch((error) => {
                 setProgress(error as Error);
             });
+        currentAbortSignal.onabort = () => {
+            bufferSource.stop();
+        };
     });
 
     let stage!: HTMLDivElement;
@@ -246,12 +255,13 @@ const SpectrumVisualizer: Component<{
     });
     onCleanup(() => {
         observer.disconnect();
+        analysingAbortController.abort();
     });
 
     createEffect(() => {
         const stateRef = untrack(extract(props, "stateRef"));
-        if (audioBuffer.state == "unresolved") {
-            setProgress(0);
+        if (!props.blob) {
+            resetAnalysing();
             stateRef?.({ type: "inited" });
         } else if (audioBuffer.state == "errored") {
             stateRef?.({ type: "errored", error: audioBuffer.error });
@@ -260,12 +270,15 @@ const SpectrumVisualizer: Component<{
             if (p == Infinity) {
                 stateRef?.({ type: "finished", duration: analysingTotalTime / 1000 });
             } else if (typeof p == "number") {
-                stateRef?.({ type: "analysing", progress: (p * props.frameStep) / audioBuffer()!.length });
+                const buf = audioBuffer();
+                if (buf) {
+                    stateRef?.({ type: "analysing", progress: (p * props.frameStep) / buf.length });
+                }
             } else {
                 stateRef?.({ type: "errored", error: p });
             }
         } else {
-            setProgress(0);
+            resetAnalysing();
             stateRef?.({ type: "decoding" });
         }
     });
