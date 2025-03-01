@@ -189,7 +189,13 @@ const SpectrumVisualizer: Component<{
 
     runOn([audioSystem, canvasList], (audioSystem, canvasList) => {
         const { audioContext, analysers, scriptProcessor, palette } = audioSystem;
-        const renderingContextList = canvasList.map((canvas) => canvas.getContext("2d")!);
+        const renderingContextList = canvasList.map(
+            (canvas) =>
+                canvas.getContext("2d", {
+                    alpha: false,
+                    desynchronized: true,
+                })!,
+        );
         let step = 0;
         const startTime = performance.now();
         scriptProcessor.onaudioprocess = () => {
@@ -203,7 +209,7 @@ const SpectrumVisualizer: Component<{
                 fftBuffers.forEach((fftBuffer, i) => {
                     const renderingContext = renderingContextList[i];
                     const { length } = fftBuffer;
-                    const imageData = renderingContext.createImageData(1, length, { colorSpace: "srgb" });
+                    const imageData = renderingContext.createImageData(1, length);
                     const imageView = new DataView(imageData.data.buffer);
                     fftBuffer.forEach((v, i) => {
                         imageView.setUint32(4 * (length - i - 1), palette(v), true);
