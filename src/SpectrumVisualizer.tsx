@@ -1,9 +1,8 @@
+import type { Component, Signal } from "solid-js";
 import {
     createResource,
     createSignal,
     Index,
-    Component,
-    Signal,
     onCleanup,
     onMount,
     createEffect,
@@ -17,7 +16,7 @@ import styles from "./styles.module.css";
 
 const { PI, sin, round, ceil, pow } = Math;
 
-function generatePalette(fn: (level: number) => number) {
+function generatePalette(fn: (level: number) => number): number[] {
     const palette: number[] = [];
     for (let i = 0; i < 256; ++i) {
         palette.push(fn(i));
@@ -129,7 +128,7 @@ const SpectrumVisualizer: Component<{
                 resovle(reader.result as ArrayBuffer);
             };
             reader.onerror = () => {
-                reject(reader.error);
+                reject(reader.error!);
             };
         }).then((arrayBuffer) => {
             const audioContext = new AudioContext();
@@ -213,7 +212,7 @@ const SpectrumVisualizer: Component<{
     const [progress, setProgress] = createSignal<number | Error>(0);
     let analysingTotalTime!: number;
     let analysingAbortController = new AbortController();
-    const resetAnalysing = () => {
+    const resetAnalysing = (): void => {
         setProgress(0);
         analysingAbortController.abort();
     };
@@ -296,7 +295,7 @@ const SpectrumVisualizer: Component<{
             resetAnalysing();
             stateRef?.({ type: "inited" });
         } else if (audioBuffer.state == "errored") {
-            stateRef?.({ type: "errored", error: audioBuffer.error });
+            stateRef?.({ type: "errored", error: audioBuffer.error as Error });
         } else if (audioBuffer.state == "ready") {
             const p = progress();
             if (p == Infinity) {
@@ -321,7 +320,7 @@ const SpectrumVisualizer: Component<{
     const [horizontalScale, setHorizontalScale] = createSignal<number>(1);
     const [horizontalScroll, setHorizontalScroll] = createSignal<number>(0);
 
-    const stableScale = (e: MouseEvent & { currentTarget: HTMLElement }, newScale: number) => {
+    const stableScale = (e: MouseEvent & { currentTarget: HTMLElement }, newScale: number): void => {
         const oldScale = horizontalScale();
         const oldScroll = horizontalScroll();
         const newScroll = clamp(
@@ -390,7 +389,7 @@ const SpectrumVisualizer: Component<{
                                 stableScale(e, newScale);
                             }
                         }}
-                        // @ts-ignore
+                        // @ts-expect-error prop:xxx not typed
                         prop:scrollLeft={horizontalScroll()}
                         style={zoomedChannel() != null && !isZoomedChannel(index) ? { display: "none" } : {}}
                     >

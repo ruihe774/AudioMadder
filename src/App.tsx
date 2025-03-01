@@ -1,11 +1,13 @@
-import { Component, createSignal, Switch, Match, batch, untrack } from "solid-js";
-import SpectrumVisualizer, { SpectrumVisualizerPalette, SpectrumVisualizerState } from "./SpectrumVisualizer";
+import type { JSXElement } from "solid-js";
+import { createSignal, Switch, Match, batch, untrack } from "solid-js";
+import type { SpectrumVisualizerPalette, SpectrumVisualizerState } from "./SpectrumVisualizer";
+import SpectrumVisualizer from "./SpectrumVisualizer";
 import styles from "./styles.module.css";
 
 const defaultFFTPower = 12;
 const defaultPalette = "sox";
 
-const App: Component<{}> = () => {
+const App = (): JSXElement => {
     let fileInput!: HTMLInputElement;
     let fftSizeInput!: HTMLInputElement;
     let paletteInput!: HTMLSelectElement;
@@ -14,7 +16,7 @@ const App: Component<{}> = () => {
     const [palette, setPalette] = createSignal<SpectrumVisualizerPalette>(defaultPalette);
     const [state, setState] = createSignal<SpectrumVisualizerState>();
     const [invalid, setInvalid] = createSignal(true);
-    const invalidate = () => setInvalid(true);
+    const invalidate = () => void setInvalid(true);
 
     return (
         <>

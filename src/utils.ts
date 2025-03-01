@@ -1,4 +1,5 @@
-import { createMemo, Accessor, createEffect } from "solid-js";
+import type { Accessor } from "solid-js";
+import { createMemo, createEffect } from "solid-js";
 
 function createHelper<T extends any[], R>(
     deps: { readonly [K in keyof T]: Accessor<T[K] | undefined> },

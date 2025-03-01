@@ -1,4 +1,5 @@
-import { Component, createEffect } from "solid-js";
+import type { Component } from "solid-js";
+import { createEffect } from "solid-js";
 
 const ChannelSpectrum: Component<{
     canvasRef?: (canvas: HTMLCanvasElement) => void;
