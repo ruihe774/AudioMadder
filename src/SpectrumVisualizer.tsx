@@ -1,6 +1,16 @@
-import { createResource, Switch, Match, createSignal, Index, Component, Signal, onCleanup, onMount } from "solid-js";
+import {
+    createResource,
+    createSignal,
+    Index,
+    Component,
+    Signal,
+    onCleanup,
+    onMount,
+    createEffect,
+    untrack,
+} from "solid-js";
 import ChannelSpectrum from "./ChannelSpectrum";
-import { createDerived, runOn } from "./utils";
+import { createDerived, runOn, extract } from "./utils";
 import styles from "./styles.module.css";
 
 const frameStep = 4096;
@@ -35,29 +45,26 @@ function sox(level: number): number {
     return (255 << 24) | (bb << 16) | (gg << 8) | rr;
 }
 
-const SpectrumVisualizer: Component<{ blob: Blob }> = (props) => {
-    const [audioBuffer] = createResource(
-        () => props.blob,
-        (blob) => {
-            return new Promise<ArrayBuffer>((resovle, reject) => {
-                const reader = new FileReader();
-                reader.readAsArrayBuffer(blob);
-                reader.onload = () => {
-                    resovle(reader.result as ArrayBuffer);
-                };
-                reader.onerror = () => {
-                    reject(reader.error);
-                };
-            }).then((arrayBuffer) => {
-                const audioContext = new AudioContext();
-                return audioContext.decodeAudioData(arrayBuffer);
-            });
-        },
+const SpectrumVisualizer: Component<{ blob?: Blob; stateRef?: (state: SpectrumVisualizerState) => void }> = (props) => {
+    const [audioBuffer] = createResource(extract(props, "blob"), (blob) =>
+        new Promise<ArrayBuffer>((resovle, reject) => {
+            const reader = new FileReader();
+            reader.readAsArrayBuffer(blob);
+            reader.onload = () => {
+                resovle(reader.result as ArrayBuffer);
+            };
+            reader.onerror = () => {
+                reject(reader.error);
+            };
+        }).then((arrayBuffer) => {
+            const audioContext = new AudioContext();
+            return audioContext.decodeAudioData(arrayBuffer);
+        }),
     );
 
-    const canvasRefs = createDerived([audioBuffer], (audioBuffer) => {
+    const canvasRefs = createDerived([extract(audioBuffer, "numberOfChannels")], (numberOfChannels) => {
         const canvasRefs: Signal<HTMLCanvasElement | undefined>[] = [];
-        for (let i = 0; i < audioBuffer.numberOfChannels; ++i) {
+        for (let i = 0; i < numberOfChannels; ++i) {
             canvasRefs.push(createSignal());
         }
         return canvasRefs;
@@ -145,7 +152,6 @@ const SpectrumVisualizer: Component<{ blob: Blob }> = (props) => {
                 setProgress((prevStep) => (prevStep as number) + 1);
             });
         };
-        setProgress(0);
         audioContext
             .startRendering()
             .then(() => {
@@ -173,48 +179,62 @@ const SpectrumVisualizer: Component<{ blob: Blob }> = (props) => {
         observer.disconnect();
     });
 
+    createEffect(() => {
+        const stateRef = untrack(extract(props, "stateRef"));
+        if (audioBuffer.state == "unresolved") {
+            setProgress(0);
+            stateRef?.({ type: "inited" });
+        } else if (audioBuffer.state == "errored") {
+            stateRef?.({ type: "errored", error: audioBuffer.error });
+        } else if (audioBuffer.state == "ready") {
+            const p = progress();
+            if (p == Infinity) {
+                stateRef?.({ type: "finished" });
+            } else if (typeof p == "number") {
+                stateRef?.({ type: "analysing", progress: (p * frameStep) / audioBuffer()!.length });
+            } else {
+                stateRef?.({ type: "errored", error: p });
+            }
+        } else {
+            setProgress(0);
+            stateRef?.({ type: "decoding" });
+        }
+    });
+
     return (
-        <>
-            <p class={styles["prompt-line"]}>
-                <Switch
-                    fallback={
-                        <>
-                            Decoding audio <progress />
-                        </>
-                    }
-                >
-                    <Match when={audioBuffer.state == "errored"}>
-                        Failed to decode: {(audioBuffer.error! as DOMException).message}
-                    </Match>
-                    <Match when={audioBuffer.state == "ready"}>
-                        <Switch fallback={`Failed to analyse: ${progress()}`}>
-                            <Match when={progress() == Infinity}>Finished.</Match>
-                            <Match when={typeof progress() == "number"}>
-                                Processing{" "}
-                                <progress value={progress() as number} max={audioBuffer()!.length / frameStep} />
-                            </Match>
-                        </Switch>
-                    </Match>
-                </Switch>
-            </p>
-            <div class={styles["visualizing-stage"]} ref={stage}>
-                <Index each={channelPropList()}>
-                    {(item) => {
-                        const { ref, width: pixelWidth, height: pixelHeight } = item();
-                        return (
-                            <ChannelSpectrum
-                                canvasRef={ref}
-                                pixelWidth={pixelWidth}
-                                pixelHeight={pixelHeight}
-                                targetWidth={targetSize().width}
-                                targetHeight={targetSize().height / audioBuffer()!.numberOfChannels}
-                            />
-                        );
-                    }}
-                </Index>
-            </div>
-        </>
+        <div class={styles["visualizing-stage"]} ref={stage}>
+            <Index each={channelPropList()}>
+                {(item) => (
+                    <ChannelSpectrum
+                        canvasRef={item().ref}
+                        pixelWidth={item().width}
+                        pixelHeight={item().height}
+                        targetWidth={targetSize().width}
+                        targetHeight={targetSize().height / audioBuffer()!.numberOfChannels}
+                    />
+                )}
+            </Index>
+        </div>
     );
 };
 
 export default SpectrumVisualizer;
+
+export type SpectrumVisualizerState =
+    | {
+          type: "inited";
+      }
+    | {
+          type: "decoding";
+      }
+    | {
+          type: "analysing";
+          progress: number;
+      }
+    | {
+          type: "finished";
+      }
+    | {
+          type: "errored";
+          error: Error;
+      };

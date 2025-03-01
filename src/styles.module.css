@@ -3,8 +3,15 @@
     flex-direction: row-reverse;
     gap: 0.5em;
     margin: 0 0.5em;
+
     input[type="file"] {
         flex-grow: 1;
+    }
+
+    input[type="submit"],
+    input[type="reset"],
+    button {
+        min-width: 5em;
     }
 }
 
