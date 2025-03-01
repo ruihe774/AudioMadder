@@ -19,7 +19,7 @@ export function createDerived<T extends any[], R>(
     return createMemo(createHelper(deps, fn));
 }
 
-export function runOn<T extends any[]>(
+export function createTrigger<T extends any[]>(
     deps: { readonly [K in keyof T]: Accessor<T[K] | undefined> },
     fn: (...args: T) => void,
 ): void {

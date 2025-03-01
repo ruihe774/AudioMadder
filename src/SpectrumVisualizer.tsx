@@ -11,7 +11,7 @@ import {
     batch,
 } from "solid-js";
 import ChannelSpectrum from "./ChannelSpectrum";
-import { createDerived, runOn, extract, clamp } from "./utils";
+import { createDerived, createTrigger, extract, clamp } from "./utils";
 import styles from "./styles.module.css";
 
 const { PI, sin, round, ceil, pow } = Math;
@@ -217,7 +217,7 @@ const SpectrumVisualizer: Component<{
         analysingAbortController.abort();
     };
 
-    runOn([audioSystem, canvasList], (audioSystem, canvasList) => {
+    createTrigger([audioSystem, canvasList], (audioSystem, canvasList) => {
         resetAnalysing();
         const currentAbortSignal = (analysingAbortController = new AbortController()).signal;
         const { audioContext, bufferSource, analysers, scriptProcessor, palette } = audioSystem;
