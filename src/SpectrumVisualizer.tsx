@@ -14,79 +14,100 @@ import ChannelSpectrum from "./ChannelSpectrum";
 import { createDerived, runOn, extract } from "./utils";
 import styles from "./styles.module.css";
 
+const { PI, sin, round, ceil } = Math;
+
+function generatePalette(fn: (level: number) => number) {
+    const palette: number[] = [];
+    for (let i = 0; i < 256; ++i) {
+        palette.push(fn(i));
+    }
+    return palette;
+}
+
+function lazyEval<R>(fn: () => R): () => R {
+    let resolved: R | undefined;
+    return () => (resolved = resolved ?? fn());
+}
+
 const palettes = {
-    sox(level: number): number {
-        level /= 255.0;
-        let r = 0.0;
-        if (level >= 0.13 && level < 0.73) {
-            r = Math.sin((((level - 0.13) / 0.6) * Math.PI) / 2.0);
-        } else if (level >= 0.73) {
-            r = 1.0;
-        }
+    sox: lazyEval(() =>
+        generatePalette((level) => {
+            level /= 255.0;
+            let r = 0.0;
+            if (level >= 0.13 && level < 0.73) {
+                r = sin((((level - 0.13) / 0.6) * PI) / 2.0);
+            } else if (level >= 0.73) {
+                r = 1.0;
+            }
 
-        let g = 0.0;
-        if (level >= 0.6 && level < 0.91) {
-            g = Math.sin((((level - 0.6) / 0.31) * Math.PI) / 2.0);
-        } else if (level >= 0.91) {
-            g = 1.0;
-        }
+            let g = 0.0;
+            if (level >= 0.6 && level < 0.91) {
+                g = sin((((level - 0.6) / 0.31) * PI) / 2.0);
+            } else if (level >= 0.91) {
+                g = 1.0;
+            }
 
-        let b = 0.0;
-        if (level < 0.6) {
-            b = 0.5 * Math.sin((level / 0.6) * Math.PI);
-        } else if (level >= 0.78) {
-            b = (level - 0.78) / 0.22;
-        }
+            let b = 0.0;
+            if (level < 0.6) {
+                b = 0.5 * sin((level / 0.6) * PI);
+            } else if (level >= 0.78) {
+                b = (level - 0.78) / 0.22;
+            }
 
-        const rr = Math.round(r * 255.0);
-        const gg = Math.round(g * 255.0);
-        const bb = Math.round(b * 255.0);
-        return (255 << 24) | (bb << 16) | (gg << 8) | rr;
-    },
+            const rr = round(r * 255.0);
+            const gg = round(g * 255.0);
+            const bb = round(b * 255.0);
+            return (255 << 24) | (bb << 16) | (gg << 8) | rr;
+        }),
+    ),
 
-    mono(level: number): number {
-        return (255 << 24) | (level << 16) | (level << 8) | level;
-    },
+    mono: lazyEval(() =>
+        generatePalette((level) => {
+            return (255 << 24) | (level << 16) | (level << 8) | level;
+        }),
+    ),
 
-    spectrum(level: number): number {
-        level /= 255.0;
-        level *= 0.6625;
-        let r = 0.0,
-            g = 0.0,
-            b = 0.0;
-        if (level >= 0 && level < 0.15) {
-            r = (0.15 - level) / (0.15 + 0.075);
-            g = 0.0;
-            b = 1.0;
-        } else if (level >= 0.15 && level < 0.275) {
-            r = 0.0;
-            g = (level - 0.15) / (0.275 - 0.15);
-            b = 1.0;
-        } else if (level >= 0.275 && level < 0.325) {
-            r = 0.0;
-            g = 1.0;
-            b = (0.325 - level) / (0.325 - 0.275);
-        } else if (level >= 0.325 && level < 0.5) {
-            r = (level - 0.325) / (0.5 - 0.325);
-            g = 1.0;
-            b = 0.0;
-        } else if (level >= 0.5 && level < 0.6625) {
-            r = 1.0;
-            g = (0.6625 - level) / (0.6625 - 0.5);
-            b = 0.0;
-        }
+    spectrum: lazyEval(() =>
+        generatePalette((level) => {
+            level /= 255.0;
+            level *= 0.6625;
+            let r = 0.0,
+                g = 0.0,
+                b = 0.0;
+            if (level >= 0 && level < 0.15) {
+                r = (0.15 - level) / (0.15 + 0.075);
+                g = 0.0;
+                b = 1.0;
+            } else if (level >= 0.15 && level < 0.275) {
+                r = 0.0;
+                g = (level - 0.15) / (0.275 - 0.15);
+                b = 1.0;
+            } else if (level >= 0.275 && level < 0.325) {
+                r = 0.0;
+                g = 1.0;
+                b = (0.325 - level) / (0.325 - 0.275);
+            } else if (level >= 0.325 && level < 0.5) {
+                r = (level - 0.325) / (0.5 - 0.325);
+                g = 1.0;
+                b = 0.0;
+            } else if (level >= 0.5 && level < 0.6625) {
+                r = 1.0;
+                g = (0.6625 - level) / (0.6625 - 0.5);
+                b = 0.0;
+            }
 
-        let cf = 1.0;
-        if (level >= 0.0 && level < 0.1) {
-            cf = level / 0.1;
-        }
-        cf *= 255.0;
+            let cf = 1.0;
+            if (level >= 0.0 && level < 0.1) {
+                cf = level / 0.1;
+            }
+            cf *= 255.0;
 
-        const rr = Math.round(r * cf + 0.5);
-        const gg = Math.round(g * cf + 0.5);
-        const bb = Math.round(b * cf + 0.5);
-        return (255 << 24) | (bb << 16) | (gg << 8) | rr;
-    },
+            const rr = round(r * cf + 0.5);
+            const gg = round(g * cf + 0.5);
+            const bb = round(b * cf + 0.5);
+            return (255 << 24) | (bb << 16) | (gg << 8) | rr;
+        }),
+    ),
 };
 
 const SpectrumVisualizer: Component<{
@@ -149,7 +170,7 @@ const SpectrumVisualizer: Component<{
         const scriptProcessor = audioContext.createScriptProcessor(props.frameStep, 1, 1);
         channelMerger.connect(scriptProcessor);
         scriptProcessor.connect(audioContext.destination);
-        const palette = palettes[props.palette];
+        const palette = palettes[props.palette]();
         return {
             audioContext,
             bufferSource,
@@ -167,7 +188,7 @@ const SpectrumVisualizer: Component<{
             return canvasRefs.map(([_, ref], i) => {
                 return {
                     ref,
-                    width: Math.ceil(audioBuffer.length / props.frameStep),
+                    width: ceil(audioBuffer.length / props.frameStep),
                     height: audioSystem.analysers[i].frequencyBinCount,
                 };
             });
@@ -219,7 +240,7 @@ const SpectrumVisualizer: Component<{
                     const imageData = renderingContext.createImageData(1, length);
                     const imageView = new DataView(imageData.data.buffer);
                     fftBuffer.forEach((v, i) => {
-                        imageView.setUint32(4 * (length - i - 1), palette(v), true);
+                        imageView.setUint32(4 * (length - i - 1), palette[v], true);
                     });
                     renderingContext.putImageData(imageData, currentStep, 0);
                 });
