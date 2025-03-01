@@ -14,40 +14,89 @@ import ChannelSpectrum from "./ChannelSpectrum";
 import { createDerived, runOn, extract } from "./utils";
 import styles from "./styles.module.css";
 
-const frameStep = 4096;
-const fftSize = 2048;
+const palettes = {
+    sox(level: number): number {
+        level /= 255.0;
+        let r = 0.0;
+        if (level >= 0.13 && level < 0.73) {
+            r = Math.sin((((level - 0.13) / 0.6) * Math.PI) / 2.0);
+        } else if (level >= 0.73) {
+            r = 1.0;
+        }
 
-function sox(level: number): number {
-    level /= 255.0;
-    let r = 0.0;
-    if (level >= 0.13 && level < 0.73) {
-        r = Math.sin((((level - 0.13) / 0.6) * Math.PI) / 2.0);
-    } else if (level >= 0.73) {
-        r = 1.0;
-    }
+        let g = 0.0;
+        if (level >= 0.6 && level < 0.91) {
+            g = Math.sin((((level - 0.6) / 0.31) * Math.PI) / 2.0);
+        } else if (level >= 0.91) {
+            g = 1.0;
+        }
 
-    let g = 0.0;
-    if (level >= 0.6 && level < 0.91) {
-        g = Math.sin((((level - 0.6) / 0.31) * Math.PI) / 2.0);
-    } else if (level >= 0.91) {
-        g = 1.0;
-    }
+        let b = 0.0;
+        if (level < 0.6) {
+            b = 0.5 * Math.sin((level / 0.6) * Math.PI);
+        } else if (level >= 0.78) {
+            b = (level - 0.78) / 0.22;
+        }
 
-    let b = 0.0;
-    if (level < 0.6) {
-        b = 0.5 * Math.sin((level / 0.6) * Math.PI);
-    } else if (level >= 0.78) {
-        b = (level - 0.78) / 0.22;
-    }
+        const rr = Math.round(r * 255.0);
+        const gg = Math.round(g * 255.0);
+        const bb = Math.round(b * 255.0);
+        return (255 << 24) | (bb << 16) | (gg << 8) | rr;
+    },
 
-    const rr = Math.round(r * 255.0);
-    const gg = Math.round(g * 255.0);
-    const bb = Math.round(b * 255.0);
-    return (255 << 24) | (bb << 16) | (gg << 8) | rr;
-}
+    mono(level: number): number {
+        return (255 << 24) | (level << 16) | (level << 8) | level;
+    },
 
-const SpectrumVisualizer: Component<{ blob?: Blob; stateRef?: (state: SpectrumVisualizerState) => void }> = (props) => {
-    const [audioBuffer] = createResource(extract(props, "blob"), (blob) =>
+    spectrum(level: number): number {
+        level /= 255.0;
+        level *= 0.6625;
+        let r = 0.0,
+            g = 0.0,
+            b = 0.0;
+        if (level >= 0 && level < 0.15) {
+            r = (0.15 - level) / (0.15 + 0.075);
+            g = 0.0;
+            b = 1.0;
+        } else if (level >= 0.15 && level < 0.275) {
+            r = 0.0;
+            g = (level - 0.15) / (0.275 - 0.15);
+            b = 1.0;
+        } else if (level >= 0.275 && level < 0.325) {
+            r = 0.0;
+            g = 1.0;
+            b = (0.325 - level) / (0.325 - 0.275);
+        } else if (level >= 0.325 && level < 0.5) {
+            r = (level - 0.325) / (0.5 - 0.325);
+            g = 1.0;
+            b = 0.0;
+        } else if (level >= 0.5 && level < 0.6625) {
+            r = 1.0;
+            g = (0.6625 - level) / (0.6625 - 0.5);
+            b = 0.0;
+        }
+
+        let cf = 1.0;
+        if (level >= 0.0 && level < 0.1) {
+            cf = level / 0.1;
+        }
+        cf *= 255.0;
+
+        const rr = Math.round(r * cf + 0.5);
+        const gg = Math.round(g * cf + 0.5);
+        const bb = Math.round(b * cf + 0.5);
+        return (255 << 24) | (bb << 16) | (gg << 8) | rr;
+    },
+};
+
+const SpectrumVisualizer: Component<{
+    blob?: Blob;
+    fftSize: number;
+    frameStep: number;
+    palette: SpectrumVisualizerPalette;
+    stateRef?: (state: SpectrumVisualizerState) => void;
+}> = (props) => {
+    const [audioBuffer, { mutate: setAudioBuffer }] = createResource(extract(props, "blob"), (blob) =>
         new Promise<ArrayBuffer>((resovle, reject) => {
             const reader = new FileReader();
             reader.readAsArrayBuffer(blob);
@@ -62,6 +111,12 @@ const SpectrumVisualizer: Component<{ blob?: Blob; stateRef?: (state: SpectrumVi
             return audioContext.decodeAudioData(arrayBuffer);
         }),
     );
+
+    createEffect(() => {
+        if (!props.blob) {
+            setAudioBuffer(void 0);
+        }
+    });
 
     const canvasRefs = createDerived([extract(audioBuffer, "numberOfChannels")], (numberOfChannels) => {
         const canvasRefs: Signal<HTMLCanvasElement | undefined>[] = [];
@@ -86,14 +141,15 @@ const SpectrumVisualizer: Component<{ blob?: Blob; stateRef?: (state: SpectrumVi
         const analysers: AnalyserNode[] = [];
         for (let i = 0; i < audioBuffer.numberOfChannels; ++i) {
             const analyser = audioContext.createAnalyser();
-            analyser.fftSize = fftSize;
+            analyser.fftSize = props.fftSize;
             channelSplitter.connect(analyser, i);
             analyser.connect(channelMerger, 0, i);
             analysers.push(analyser);
         }
-        const scriptProcessor = audioContext.createScriptProcessor(frameStep, 1, 1);
+        const scriptProcessor = audioContext.createScriptProcessor(props.frameStep, 1, 1);
         channelMerger.connect(scriptProcessor);
         scriptProcessor.connect(audioContext.destination);
+        const palette = palettes[props.palette];
         return {
             audioContext,
             bufferSource,
@@ -101,6 +157,7 @@ const SpectrumVisualizer: Component<{ blob?: Blob; stateRef?: (state: SpectrumVi
             analysers,
             channelMerger,
             scriptProcessor,
+            palette,
         };
     });
 
@@ -110,7 +167,7 @@ const SpectrumVisualizer: Component<{ blob?: Blob; stateRef?: (state: SpectrumVi
             return canvasRefs.map(([_, ref], i) => {
                 return {
                     ref,
-                    width: Math.ceil(audioBuffer.length / frameStep),
+                    width: Math.ceil(audioBuffer.length / props.frameStep),
                     height: audioSystem.analysers[i].frequencyBinCount,
                 };
             });
@@ -128,11 +185,13 @@ const SpectrumVisualizer: Component<{ blob?: Blob; stateRef?: (state: SpectrumVi
     });
 
     const [progress, setProgress] = createSignal<number | Error>(0);
+    let analysingTotalTime!: number;
 
     runOn([audioSystem, canvasList], (audioSystem, canvasList) => {
-        const { audioContext, analysers, scriptProcessor } = audioSystem;
+        const { audioContext, analysers, scriptProcessor, palette } = audioSystem;
         const renderingContextList = canvasList.map((canvas) => canvas.getContext("2d")!);
         let step = 0;
+        const startTime = performance.now();
         scriptProcessor.onaudioprocess = () => {
             const currentStep = step++;
             const fftBuffers = analysers.map((analyser) => {
@@ -147,16 +206,18 @@ const SpectrumVisualizer: Component<{ blob?: Blob; stateRef?: (state: SpectrumVi
                     const imageData = renderingContext.createImageData(1, length, { colorSpace: "srgb" });
                     const imageView = new DataView(imageData.data.buffer);
                     fftBuffer.forEach((v, i) => {
-                        imageView.setUint32(4 * (length - i - 1), sox(v), true);
+                        imageView.setUint32(4 * (length - i - 1), palette(v), true);
                     });
                     renderingContext.putImageData(imageData, currentStep, 0);
                 });
                 setProgress((prevStep) => (prevStep as number) + 1);
             });
         };
+        setProgress(0);
         audioContext
             .startRendering()
             .then(() => {
+                analysingTotalTime = performance.now() - startTime;
                 setProgress(Infinity);
             })
             .catch((error) => {
@@ -191,9 +252,9 @@ const SpectrumVisualizer: Component<{ blob?: Blob; stateRef?: (state: SpectrumVi
         } else if (audioBuffer.state == "ready") {
             const p = progress();
             if (p == Infinity) {
-                stateRef?.({ type: "finished" });
+                stateRef?.({ type: "finished", duration: analysingTotalTime / 1000 });
             } else if (typeof p == "number") {
-                stateRef?.({ type: "analysing", progress: (p * frameStep) / audioBuffer()!.length });
+                stateRef?.({ type: "analysing", progress: (p * props.frameStep) / audioBuffer()!.length });
             } else {
                 stateRef?.({ type: "errored", error: p });
             }
@@ -251,8 +312,11 @@ export type SpectrumVisualizerState =
       }
     | {
           type: "finished";
+          duration: number;
       }
     | {
           type: "errored";
           error: Error;
       };
+
+export type SpectrumVisualizerPalette = "spectrum" | "sox" | "mono";
