@@ -1,0 +1,22 @@
+{
+    "name": "audio-madder",
+    "private": true,
+    "version": "0.2.0",
+    "type": "module",
+    "scripts": {
+        "dev": "vite",
+        "build": "vite build",
+        "preview": "vite preview",
+        "check": "tsc",
+        "format": "prettier -w package.json tsconfig.json vite.config.ts .prettierrc.json src"
+    },
+    "dependencies": {
+        "solid-js": "1.9.*"
+    },
+    "devDependencies": {
+        "prettier": "3.*",
+        "typescript": "5.*",
+        "vite": "6.*",
+        "vite-plugin-solid": "2.*"
+    }
+}

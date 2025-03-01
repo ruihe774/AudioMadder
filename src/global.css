@@ -1,0 +1,22 @@
+:root {
+    font-family: system-ui;
+}
+
+input {
+    font-family: system-ui;
+}
+
+body {
+    margin: 0;
+    padding: 0;
+}
+
+#root {
+    display: flex;
+    flex-direction: column;
+    width: 100vw;
+    height: 100vh;
+    gap: 0.5em;
+    box-sizing: border-box;
+    padding-top: 0.5em;
+}

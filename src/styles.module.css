@@ -1,0 +1,21 @@
+.file-input-form {
+    display: flex;
+    flex-direction: row-reverse;
+    gap: 0.5em;
+    margin: 0 0.5em;
+    input[type="file"] {
+        flex-grow: 1;
+    }
+}
+
+.prompt-line {
+    margin: 0 0.5em;
+}
+
+.visualizing-stage {
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+    overflow: hidden;
+    background-color: black;
+}
