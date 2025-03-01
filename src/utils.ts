@@ -28,3 +28,7 @@ export function runOn<T extends any[]>(
 export function extract<T, K extends keyof T>(o: T | (() => T | undefined), n: K): () => T[K] | undefined {
     return typeof o == "function" ? () => (o as () => T | undefined)()?.[n] : () => o[n];
 }
+
+export function clamp(x: number, low: number, high: number): number {
+    return x < low ? low : x > high ? high : x;
+}

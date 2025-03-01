@@ -9,12 +9,13 @@ import {
     createEffect,
     untrack,
     createSelector,
+    batch,
 } from "solid-js";
 import ChannelSpectrum from "./ChannelSpectrum";
-import { createDerived, runOn, extract } from "./utils";
+import { createDerived, runOn, extract, clamp } from "./utils";
 import styles from "./styles.module.css";
 
-const { PI, sin, round, ceil } = Math;
+const { PI, sin, round, ceil, pow } = Math;
 
 function generatePalette(fn: (level: number) => number) {
     const palette: number[] = [];
@@ -109,6 +110,10 @@ const palettes = {
         }),
     ),
 };
+
+function isModifierPreventing(e: MouseEvent | KeyboardEvent): boolean {
+    return e.getModifierState("Accel");
+}
 
 const SpectrumVisualizer: Component<{
     blob?: Blob;
@@ -313,25 +318,87 @@ const SpectrumVisualizer: Component<{
     const [zoomedChannel, setZoomedChannel] = createSignal<number>();
     const isZoomedChannel = createSelector(zoomedChannel);
 
+    const [horizontalScale, setHorizontalScale] = createSignal<number>(1);
+    const [horizontalScroll, setHorizontalScroll] = createSignal<number>(0);
+
+    const stableScale = (e: MouseEvent & { currentTarget: HTMLElement }, newScale: number) => {
+        const oldScale = horizontalScale();
+        const oldScroll = horizontalScroll();
+        const newScroll = clamp(
+            oldScroll + (e.x - e.currentTarget.getBoundingClientRect().left + oldScroll) * (newScale / oldScale - 1),
+            0,
+            targetSize().width * (newScale - 1),
+        );
+        batch(() => {
+            setHorizontalScale(newScale);
+            setHorizontalScroll(newScroll);
+        });
+    };
+
     return (
         <div class={styles["visualizing-stage"]} ref={stage}>
             <Index each={channelPropList()}>
                 {(item, index) => (
                     <div
-                        on:dblclick={() => {
+                        on:dblclick={(e) => {
+                            e.preventDefault();
                             if (isZoomedChannel(index)) {
                                 setZoomedChannel(void 0);
                             } else {
                                 setZoomedChannel(index);
                             }
                         }}
+                        on:wheel={{
+                            passive: false,
+                            handleEvent(e) {
+                                if (
+                                    e.deltaX == 0 &&
+                                    e.deltaMode == WheelEvent.DOM_DELTA_PIXEL &&
+                                    !isModifierPreventing(e)
+                                ) {
+                                    e.preventDefault();
+                                    stableScale(
+                                        e,
+                                        clamp(
+                                            horizontalScale() * pow(1.2, -e.deltaY / 100),
+                                            1,
+                                            ((item().width / targetSize().width) * 2) / devicePixelRatio,
+                                        ),
+                                    );
+                                }
+                            },
+                        }}
+                        on:scroll={{
+                            passive: true,
+                            handleEvent(e) {
+                                setHorizontalScroll(e.target.scrollLeft);
+                            },
+                        }}
+                        on:mousemove={(e) => {
+                            if (e.buttons == 1 && !isModifierPreventing(e)) {
+                                setHorizontalScroll((prev) =>
+                                    clamp(prev - e.movementX, 0, targetSize().width * (horizontalScale() - 1)),
+                                );
+                            }
+                        }}
+                        on:mousedown={(e) => {
+                            if (e.button == 1 && !isModifierPreventing(e)) {
+                                e.preventDefault();
+                                const oldScale = horizontalScale();
+                                const pixelToPixelScale = item().width / targetSize().width / devicePixelRatio;
+                                const newScale = oldScale == pixelToPixelScale ? 1 : pixelToPixelScale;
+                                stableScale(e, newScale);
+                            }
+                        }}
+                        // @ts-ignore
+                        prop:scrollLeft={horizontalScroll()}
                         style={zoomedChannel() != null && !isZoomedChannel(index) ? { display: "none" } : {}}
                     >
                         <ChannelSpectrum
                             canvasRef={item().ref}
                             pixelWidth={item().width}
                             pixelHeight={item().height}
-                            targetWidth={targetSize().width}
+                            targetWidth={targetSize().width * horizontalScale()}
                             targetHeight={
                                 targetSize().height / (isZoomedChannel(index) ? 1 : audioBuffer()!.numberOfChannels)
                             }
