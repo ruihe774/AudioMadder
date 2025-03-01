@@ -96,7 +96,7 @@ const App: Component<{}> = () => {
                     </Match>
                     <Match when={state()?.type == "analysing"}>
                         <>
-                            Analysing{" "}
+                            {"Analysing "}
                             <progress
                                 value={(state()! as { type: "analysing"; progress: number }).progress * 100}
                                 max="100"
