@@ -8,6 +8,7 @@ import {
     onMount,
     createEffect,
     untrack,
+    createSelector,
 } from "solid-js";
 import ChannelSpectrum from "./ChannelSpectrum";
 import { createDerived, runOn, extract } from "./utils";
@@ -109,8 +110,8 @@ const SpectrumVisualizer: Component<{ blob?: Blob; stateRef?: (state: SpectrumVi
             return canvasRefs.map(([_, ref], i) => {
                 return {
                     ref,
-                    width: audioSystem.analysers[i].frequencyBinCount,
-                    height: Math.ceil(audioBuffer.length / frameStep),
+                    width: Math.ceil(audioBuffer.length / frameStep),
+                    height: audioSystem.analysers[i].frequencyBinCount,
                 };
             });
         },
@@ -142,12 +143,13 @@ const SpectrumVisualizer: Component<{ blob?: Blob; stateRef?: (state: SpectrumVi
             requestIdleCallback(() => {
                 fftBuffers.forEach((fftBuffer, i) => {
                     const renderingContext = renderingContextList[i];
-                    const imageData = renderingContext.createImageData(fftBuffer.length, 1, { colorSpace: "srgb" });
+                    const { length } = fftBuffer;
+                    const imageData = renderingContext.createImageData(1, length, { colorSpace: "srgb" });
                     const imageView = new DataView(imageData.data.buffer);
                     fftBuffer.forEach((v, i) => {
-                        imageView.setUint32(4 * i, sox(v), true);
+                        imageView.setUint32(4 * (length - i - 1), sox(v), true);
                     });
-                    renderingContext.putImageData(imageData, 0, currentStep);
+                    renderingContext.putImageData(imageData, currentStep, 0);
                 });
                 setProgress((prevStep) => (prevStep as number) + 1);
             });
@@ -201,17 +203,33 @@ const SpectrumVisualizer: Component<{ blob?: Blob; stateRef?: (state: SpectrumVi
         }
     });
 
+    const [zoomedChannel, setZoomedChannel] = createSignal<number>();
+    const isZoomedChannel = createSelector(zoomedChannel);
+
     return (
         <div class={styles["visualizing-stage"]} ref={stage}>
             <Index each={channelPropList()}>
-                {(item) => (
-                    <ChannelSpectrum
-                        canvasRef={item().ref}
-                        pixelWidth={item().width}
-                        pixelHeight={item().height}
-                        targetWidth={targetSize().width}
-                        targetHeight={targetSize().height / audioBuffer()!.numberOfChannels}
-                    />
+                {(item, index) => (
+                    <div
+                        on:dblclick={() => {
+                            if (isZoomedChannel(index)) {
+                                setZoomedChannel(void 0);
+                            } else {
+                                setZoomedChannel(index);
+                            }
+                        }}
+                        style={zoomedChannel() != null && !isZoomedChannel(index) ? { display: "none" } : {}}
+                    >
+                        <ChannelSpectrum
+                            canvasRef={item().ref}
+                            pixelWidth={item().width}
+                            pixelHeight={item().height}
+                            targetWidth={targetSize().width}
+                            targetHeight={
+                                targetSize().height / (isZoomedChannel(index) ? 1 : audioBuffer()!.numberOfChannels)
+                            }
+                        />
+                    </div>
                 )}
             </Index>
         </div>

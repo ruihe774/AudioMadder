@@ -1,7 +1,7 @@
 import { Component, createEffect } from "solid-js";
 
 const ChannelSpectrum: Component<{
-    canvasRef: (canvas: HTMLCanvasElement) => void;
+    canvasRef?: (canvas: HTMLCanvasElement) => void;
     pixelWidth: number;
     pixelHeight: number;
     targetWidth: number;
@@ -13,7 +13,7 @@ const ChannelSpectrum: Component<{
         const { pixelWidth, pixelHeight, canvasRef } = props;
         canvas.width = pixelWidth;
         canvas.height = pixelHeight;
-        canvasRef(canvas);
+        canvasRef?.(canvas);
     });
 
     return (
@@ -21,7 +21,7 @@ const ChannelSpectrum: Component<{
             <canvas
                 ref={canvas}
                 style={{
-                    "transform": `scale(${props.targetWidth / props.pixelHeight},${props.targetHeight / props.pixelWidth}) rotate(-90deg) translateX(-${props.pixelWidth}px)`,
+                    "transform": `scale(${props.targetWidth / props.pixelWidth},${props.targetHeight / props.pixelHeight})`,
                     "transform-origin": "0 0",
                 }}
             />
