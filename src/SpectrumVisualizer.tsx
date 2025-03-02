@@ -1,17 +1,7 @@
 import type { Component, Signal } from "solid-js";
-import {
-    createResource,
-    createSignal,
-    Index,
-    onCleanup,
-    onMount,
-    createEffect,
-    untrack,
-    createSelector,
-    batch,
-} from "solid-js";
+import { createSignal, Index, onCleanup, onMount, createEffect, untrack, createSelector, batch } from "solid-js";
 import ChannelSpectrum from "./ChannelSpectrum";
-import { createDerived, createTrigger, extract, clamp } from "./utils";
+import { createDerived, createTrigger, extract, clamp, createSafeResource } from "./utils";
 import styles from "./styles.module.css";
 
 const { PI, sin, round, ceil, pow } = Math;
@@ -120,7 +110,7 @@ const SpectrumVisualizer: Component<{
     palette: SpectrumVisualizerPalette;
     stateRef?: (state: SpectrumVisualizerState) => void;
 }> = (props) => {
-    const [audioBuffer, { mutate: setAudioBuffer }] = createResource(extract(props, "blob"), (blob) =>
+    const [audioBuffer, { mutate: setAudioBuffer }] = createSafeResource(extract(props, "blob"), (blob) =>
         new Promise<ArrayBuffer>((resovle, reject) => {
             const reader = new FileReader();
             reader.readAsArrayBuffer(blob);
