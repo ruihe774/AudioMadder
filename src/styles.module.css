@@ -38,3 +38,8 @@
     overscroll-behavior: none;
     padding-top: 10px;
 }
+
+.channel-canvas-scrollable {
+    display: flex;
+    flex-direction: column;
+}

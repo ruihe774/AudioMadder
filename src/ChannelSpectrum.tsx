@@ -35,8 +35,8 @@ const ChannelSpectrum: Component<{
     const axisYWidth = 60;
     const axisXHeight = 20;
     const topPadding = 10;
-    const canvasTargetWidth = (): number => props.targetWidth - axisYWidth;
-    const scaledCanvasWidth = (): number => canvasTargetWidth() * (props.horizontalScale ?? 1);
+    const unscaledCanvasWidth = (): number => props.targetWidth - axisYWidth;
+    const canvasTargetWidth = (): number => unscaledCanvasWidth() * (props.horizontalScale ?? 1);
     const canvasTargetHeight = (): number => props.targetHeight - axisXHeight - topPadding;
 
     const stableScale = (e: MouseEvent & { currentTarget: HTMLElement }, newScale: number): void => {
@@ -45,7 +45,7 @@ const ChannelSpectrum: Component<{
             onHorizontalScaleChanged: setHorizontalScale,
             onHorizontalScrollChanged: setHorizontalScroll,
         } = props;
-        const canvasWidth = canvasTargetWidth();
+        const canvasWidth = unscaledCanvasWidth();
         const oldScroll = props.horizontalScroll ?? 0;
         if (!oldScale || !setHorizontalScale) return;
         e.preventDefault();
@@ -112,7 +112,7 @@ const ChannelSpectrum: Component<{
                     passive: false,
                     handleEvent(e) {
                         const { horizontalScale, pixelWidth } = props;
-                        const canvasWidth = canvasTargetWidth();
+                        const canvasWidth = unscaledCanvasWidth();
                         if (
                             horizontalScale &&
                             e.deltaX == 0 &&
@@ -152,7 +152,7 @@ const ChannelSpectrum: Component<{
                 on:scrollend={() => void setScrolling(false)}
                 on:mousemove={(e) => {
                     const { horizontalScale, horizontalScroll, onHorizontalScrollChanged: setHorizontalScroll } = props;
-                    const canvasWidth = canvasTargetWidth();
+                    const canvasWidth = unscaledCanvasWidth();
                     if (
                         horizontalScale &&
                         horizontalScroll != null &&
@@ -171,7 +171,7 @@ const ChannelSpectrum: Component<{
                 }}
                 on:mousedown={(e) => {
                     const { pixelWidth } = props;
-                    const canvasWidth = canvasTargetWidth();
+                    const canvasWidth = unscaledCanvasWidth();
                     if (e.button == 1 && !isModifierPreventing(e)) {
                         scalePixelToPixel(e, pixelWidth, canvasWidth);
                     }
@@ -181,33 +181,19 @@ const ChannelSpectrum: Component<{
                 on:webkitmouseforcewillbegin={(e: MouseEvent) => e.preventDefault()}
                 on:webkitmouseforcedown={(e: MouseEvent & { currentTarget: HTMLElement }) => {
                     const { pixelWidth } = props;
-                    const canvasWidth = canvasTargetWidth();
+                    const canvasWidth = unscaledCanvasWidth();
                     scalePixelToPixel(e, pixelWidth, canvasWidth);
                 }}
             >
-                <div
-                    style={{
-                        width: `${scaledCanvasWidth()}px`,
-                        height: `${canvasTargetHeight() + axisXHeight}px`,
-                        overflow: "hidden",
-                        position: "relative",
-                    }}
-                >
+                <div class={styles["channel-canvas-scrollable"]}>
                     <canvas
                         ref={canvas}
                         style={{
-                            "transform": `scale(${scaledCanvasWidth() / props.pixelWidth},${canvasTargetHeight() / props.pixelHeight})`,
-                            "transform-origin": "0 0",
+                            width: `${canvasTargetWidth()}px`,
+                            height: `${canvasTargetHeight()}px`,
                         }}
                     />
-                    <div
-                        style={{
-                            position: "absolute",
-                            top: `${canvasTargetHeight()}px`,
-                        }}
-                    >
-                        <ChannelAxisX width={scaledCanvasWidth()} height={axisXHeight} duration={props.duration} />
-                    </div>
+                    <ChannelAxisX width={canvasTargetWidth()} height={axisXHeight} duration={props.duration} />
                 </div>
             </div>
         </div>
