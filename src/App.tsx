@@ -92,7 +92,12 @@ const App = (): JSXElement => {
                     </Match>
                 </Switch>
             </p>
-            <SpectrumVisualizer blob={audioFile()} fftSize={1 << fftPower()} palette={palette()} stateRef={setState} />
+            <SpectrumVisualizer
+                blob={audioFile()}
+                fftSize={1 << fftPower()}
+                palette={palette()}
+                onStateChanged={setState}
+            />
         </>
     );
 };

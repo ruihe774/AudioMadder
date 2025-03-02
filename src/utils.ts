@@ -80,24 +80,23 @@ export function createSafeResource<T, S, R = unknown>(
 ): SafeResourceReturn<T, R> {
     const [read, action] = createResource(source, fetcher, options);
 
-    function safeRead(): T | undefined {
-        if (read.state != "errored") {
-            return read();
-        }
-    }
+    const isSourceVoid = (): boolean =>
+        source == void 0 || (typeof source == "function" && (source as () => false | S | null | undefined)() == void 0);
+
+    const safeRead = createMemo((): T | undefined => (!isSourceVoid() && read.state != "errored" ? read() : void 0));
 
     Object.defineProperties(safeRead, {
         state: {
-            get: () => read.state,
+            get: () => (isSourceVoid() ? "unresolved" : read.state),
         },
         error: {
-            get: () => read.error,
+            get: () => (isSourceVoid() ? void 0 : read.error),
         },
         loading: {
-            get: () => read.loading,
+            get: () => !isSourceVoid() && read.loading,
         },
         latest: {
-            get: () => read.latest,
+            get: () => (isSourceVoid() ? void 0 : read.latest),
         },
     });
 

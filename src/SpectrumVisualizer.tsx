@@ -104,14 +104,14 @@ const SpectrumVisualizer: Component<{
     blob?: Blob;
     fftSize: number;
     palette: SpectrumVisualizerPalette;
-    stateRef?: (state: SpectrumVisualizerState) => void;
+    onStateChanged?: (state: SpectrumVisualizerState) => void;
 }> = (props) => {
-    const [audioBuffer, { mutate: setAudioBuffer }] = createSafeResource(extract(props, "blob"), (blob) =>
-        new Promise<ArrayBuffer>((resovle, reject) => {
+    const [audioBuffer] = createSafeResource(extract(props, "blob"), (blob) =>
+        new Promise<ArrayBuffer>((resolve, reject) => {
             const reader = new FileReader();
             reader.readAsArrayBuffer(blob);
             reader.onload = () => {
-                resovle(reader.result as ArrayBuffer);
+                resolve(reader.result as ArrayBuffer);
             };
             reader.onerror = () => {
                 reject(reader.error!);
@@ -121,12 +121,6 @@ const SpectrumVisualizer: Component<{
             return audioContext.decodeAudioData(arrayBuffer);
         }),
     );
-
-    createEffect(() => {
-        if (!props.blob) {
-            setAudioBuffer(void 0);
-        }
-    });
 
     const canvasRefs = createDerived([extract(audioBuffer, "numberOfChannels")], (numberOfChannels) => {
         const canvasRefs: Signal<HTMLCanvasElement | undefined>[] = [];
@@ -276,27 +270,34 @@ const SpectrumVisualizer: Component<{
     });
 
     createEffect(() => {
-        const stateRef = untrack(extract(props, "stateRef"));
-        if (!props.blob) {
-            resetAnalysing();
-            stateRef?.({ type: "inited" });
-        } else if (audioBuffer.state == "errored") {
-            stateRef?.({ type: "errored", error: audioBuffer.error as Error });
-        } else if (audioBuffer.state == "ready") {
-            const p = progress();
-            if (p == Infinity) {
-                stateRef?.({ type: "finished", duration: analysingTotalTime / 1000 });
-            } else if (typeof p == "number") {
-                const buf = audioBuffer();
-                if (buf) {
-                    stateRef?.({ type: "analysing", progress: (p * props.fftSize) / buf.length });
+        const setState = untrack(extract(props, "onStateChanged")) ?? (() => void 0);
+        switch (audioBuffer.state) {
+            case "unresolved":
+                resetAnalysing();
+                setState({ type: "inited" });
+                break;
+            case "pending":
+            case "refreshing":
+                resetAnalysing();
+                setState({ type: "decoding" });
+                break;
+            case "errored":
+                setState({ type: "errored", error: audioBuffer.error as Error });
+                break;
+            case "ready": {
+                const p = progress();
+                if (p == Infinity) {
+                    setState({ type: "finished", duration: analysingTotalTime / 1000 });
+                } else if (typeof p == "number") {
+                    const buf = audioBuffer();
+                    if (buf) {
+                        setState({ type: "analysing", progress: (p * props.fftSize) / buf.length });
+                    }
+                } else {
+                    setState({ type: "errored", error: p });
                 }
-            } else {
-                stateRef?.({ type: "errored", error: p });
+                break;
             }
-        } else {
-            resetAnalysing();
-            stateRef?.({ type: "decoding" });
         }
     });
 
