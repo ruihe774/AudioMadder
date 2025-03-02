@@ -12,12 +12,12 @@ const ChannelAxisX: Component<{
     const scales = createMemo(() => {
         const { duration: max, width } = props;
         const scales = [];
-        let step = nextPowerOfTwo((max * 4) / width) * 15;
+        let step = nextPowerOfTwo((max * 5) / width) * 15;
         if (step == 15) {
-            if ((width / max) * 10 > 60) {
+            if ((width / max) * 10 > 45) {
                 step = 10;
             }
-            if ((width / max) * 5 > 60) {
+            if ((width / max) * 5 > 45) {
                 step = 5;
             }
         }

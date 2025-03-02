@@ -147,6 +147,8 @@ const SpectrumVisualizer: Component<{
             const analyser = audioContext.createAnalyser();
             analyser.fftSize = props.fftSize;
             analyser.smoothingTimeConstant = 0;
+            analyser.minDecibels = -120;
+            analyser.maxDecibels = 0;
             channelSplitter.connect(analyser, i);
             analyser.connect(channelMerger, 0, i);
             analysers.push(analyser);
