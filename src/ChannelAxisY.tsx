@@ -1,32 +1,25 @@
-import { Component, createMemo, Index } from "solid-js";
+import type { Component } from "solid-js";
+import { createMemo, Index } from "solid-js";
+import { nextPowerOfTwo } from "./utils.ts";
 
 const { floor, ceil } = Math;
-
-function nextPowerOfTwo(x: number): number {
-    x = x | 0;
-    if (x <= 1) return 1;
-    --x;
-    x |= x >> 1;
-    x |= x >> 2;
-    x |= x >> 4;
-    x |= x >> 8;
-    x |= x >> 16;
-    ++x;
-    return x;
-}
 
 const ChannelAxisY: Component<{
     width: number;
     height: number;
     minFreq: number;
     maxFreq: number;
+    padding?: [left: number, top: number, right: number, bottom: number];
 }> = (props) => {
+    const rightEdge = (): number => props.width - (props.padding?.[2] ?? 0);
+    const innerHeight = (): number => props.height - (props.padding?.[1] ?? 0) - (props.padding?.[3] ?? 0);
+
     const scales = createMemo(() => {
-        const { minFreq, maxFreq, height } = props;
+        const { minFreq, maxFreq } = props;
         const scales = [];
         const min = ceil(minFreq / 1000);
         const max = floor(maxFreq / 1000);
-        const step = nextPowerOfTwo(((max - min) * 30) / height);
+        const step = nextPowerOfTwo(((max - min) * 30) / innerHeight());
         for (let i = min; i <= max; i += step) {
             scales.push(i);
         }
@@ -38,18 +31,19 @@ const ChannelAxisY: Component<{
             <Index each={scales()}>
                 {(scale) => {
                     const y = (): number =>
-                        ((props.maxFreq - scale() * 1000) * props.height) / (props.maxFreq - props.minFreq);
+                        ((props.maxFreq - scale() * 1000) * innerHeight()) / (props.maxFreq - props.minFreq) +
+                        (props.padding?.[1] ?? 0);
                     return (
                         <>
-                            <line x1={props.width - 5} x2={props.width} y1={y()} y2={y()} stroke="white" />
+                            <line x1={rightEdge() - 5} x2={rightEdge()} y1={y()} y2={y()} stroke="white" />
                             <text
-                                x={props.width - 10}
+                                x={rightEdge() - 10}
                                 y={y()}
                                 fill="white"
                                 text-anchor="end"
                                 font-family="monospace"
-                                font-size="0.6em"
                                 dominant-baseline="middle"
+                                font-size="0.6em"
                             >
                                 {scale()} kHz
                             </text>

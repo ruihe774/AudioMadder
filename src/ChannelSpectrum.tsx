@@ -1,8 +1,9 @@
 import type { Component } from "solid-js";
 import { batch, createEffect, createSignal } from "solid-js";
 import { clamp, createTrigger, extract } from "./utils";
-import styles from "./styles.module.css";
 import ChannelAxisY from "./ChannelAxisY.tsx";
+import ChannelAxisX from "./ChannelAxisX.tsx";
+import styles from "./styles.module.css";
 
 const { pow } = Math;
 
@@ -18,6 +19,7 @@ const ChannelSpectrum: Component<{
     targetHeight: number;
     minFreq: number;
     maxFreq: number;
+    duration: number;
     horizontalScale?: number;
     onHorizontalScaleChanged?: (newScale: number) => void;
     hide?: boolean;
@@ -30,9 +32,12 @@ const ChannelSpectrum: Component<{
 
     const [scrolling, setScrolling] = createSignal(false);
 
-    const axisYwidth = 60;
-    const canvasTargetWidth = (): number => props.targetWidth - axisYwidth;
+    const axisYWidth = 60;
+    const axisXHeight = 20;
+    const topPadding = 10;
+    const canvasTargetWidth = (): number => props.targetWidth - axisYWidth;
     const scaledCanvasWidth = (): number => canvasTargetWidth() * (props.horizontalScale ?? 1);
+    const canvasTargetHeight = (): number => props.targetHeight - axisXHeight - topPadding;
 
     const stableScale = (e: MouseEvent & { currentTarget: HTMLElement }, newScale: number): void => {
         const {
@@ -87,8 +92,9 @@ const ChannelSpectrum: Component<{
     return (
         <div class={styles["channel-plot"]}>
             <ChannelAxisY
-                width={axisYwidth}
+                width={axisYWidth}
                 height={props.targetHeight}
+                padding={[0, topPadding, 0, axisXHeight]}
                 minFreq={props.minFreq}
                 maxFreq={props.maxFreq}
             />
@@ -180,15 +186,28 @@ const ChannelSpectrum: Component<{
                 }}
             >
                 <div
-                    style={{ width: `${scaledCanvasWidth()}px`, height: `${props.targetHeight}px`, overflow: "hidden" }}
+                    style={{
+                        width: `${scaledCanvasWidth()}px`,
+                        height: `${canvasTargetHeight() + axisXHeight}px`,
+                        overflow: "hidden",
+                        position: "relative",
+                    }}
                 >
                     <canvas
                         ref={canvas}
                         style={{
-                            "transform": `scale(${scaledCanvasWidth() / props.pixelWidth},${props.targetHeight / props.pixelHeight})`,
+                            "transform": `scale(${scaledCanvasWidth() / props.pixelWidth},${canvasTargetHeight() / props.pixelHeight})`,
                             "transform-origin": "0 0",
                         }}
                     />
+                    <div
+                        style={{
+                            position: "absolute",
+                            top: `${canvasTargetHeight()}px`,
+                        }}
+                    >
+                        <ChannelAxisX width={scaledCanvasWidth()} height={axisXHeight} duration={props.duration} />
+                    </div>
                 </div>
             </div>
         </div>

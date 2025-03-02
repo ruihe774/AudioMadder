@@ -30,10 +30,6 @@ export function extract<T, K extends keyof T>(o: T | (() => T | undefined), n: K
     return typeof o == "function" ? () => (o as () => T | undefined)()?.[n] : () => o[n];
 }
 
-export function clamp(x: number, low: number, high: number): number {
-    return low < high ? (x < low ? low : x > high ? high : x) : low;
-}
-
 interface Unresolved {
     state: "unresolved";
     loading: false;
@@ -101,4 +97,21 @@ export function createSafeResource<T, S, R = unknown>(
     });
 
     return [safeRead as SafeResource<T>, action];
+}
+
+export function clamp(x: number, low: number, high: number): number {
+    return low < high ? (x < low ? low : x > high ? high : x) : low;
+}
+
+export function nextPowerOfTwo(x: number): number {
+    x = x | 0;
+    if (x <= 1) return 1;
+    --x;
+    x |= x >> 1;
+    x |= x >> 2;
+    x |= x >> 4;
+    x |= x >> 8;
+    x |= x >> 16;
+    ++x;
+    return x;
 }

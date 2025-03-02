@@ -28,12 +28,13 @@
     background-color: black;
 }
 
-.channel-canvas-container {
-    overflow-x: overlay;
-    overscroll-behavior: none;
-}
-
 .channel-plot {
     display: grid;
     grid-template-columns: 60px 1fr;
+}
+
+.channel-canvas-container {
+    overflow-x: overlay;
+    overscroll-behavior: none;
+    padding-top: 10px;
 }
