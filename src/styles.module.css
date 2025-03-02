@@ -26,8 +26,9 @@
     flex-grow: 1;
     overflow: hidden;
     background-color: black;
+}
 
-    & > div {
-        overflow-x: overlay;
-    }
+.channel-canvas-container {
+    overflow-x: overlay;
+    overscroll-behavior: none;
 }

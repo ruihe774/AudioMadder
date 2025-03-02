@@ -1,5 +1,5 @@
 import type { JSXElement } from "solid-js";
-import { createSignal, Switch, Match, batch, untrack } from "solid-js";
+import { createSignal, Switch, Match, batch, createDeferred } from "solid-js";
 import type { SpectrumVisualizerPalette, SpectrumVisualizerState } from "./SpectrumVisualizer";
 import SpectrumVisualizer from "./SpectrumVisualizer";
 import styles from "./styles.module.css";
@@ -13,7 +13,9 @@ const App = (): JSXElement => {
     let paletteInput!: HTMLSelectElement;
     const [audioFile, setAudioFile] = createSignal<File>();
     const [fftPower, setFFTPower] = createSignal(defaultFFTPower);
+    const deferredFFTPower = createDeferred(fftPower);
     const [palette, setPalette] = createSignal<SpectrumVisualizerPalette>(defaultPalette);
+    const deferredPalette = createDeferred(palette);
     const [state, setState] = createSignal<SpectrumVisualizerState>();
     const [invalid, setInvalid] = createSignal(true);
     const invalidate = () => void setInvalid(true);
@@ -38,10 +40,6 @@ const App = (): JSXElement => {
                         setPalette(defaultPalette);
                         setInvalid(true);
                     });
-                    requestIdleCallback(() => {
-                        fftSizeInput.value = `${untrack(fftPower)}`;
-                        paletteInput.value = `${untrack(palette)}`;
-                    });
                 }}
             >
                 <input type="file" accept="audio/*" required ref={fileInput} on:change={invalidate} />
@@ -52,7 +50,7 @@ const App = (): JSXElement => {
                         min="10"
                         max="14"
                         step="1"
-                        value={defaultFFTPower}
+                        value={deferredFFTPower()}
                         required
                         ref={fftSizeInput}
                         on:change={invalidate}
@@ -60,7 +58,7 @@ const App = (): JSXElement => {
                 </label>
                 <label>
                     Palette:{" "}
-                    <select ref={paletteInput} value={defaultPalette} required on:change={invalidate}>
+                    <select ref={paletteInput} value={deferredPalette()} required on:change={invalidate}>
                         <option value="sox">SoX</option>
                         <option value="mono">Monochrome</option>
                         <option value="spectrum">Spectrum</option>

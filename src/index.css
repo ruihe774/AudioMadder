@@ -1,5 +1,6 @@
 :root {
     font-family: system-ui;
+    overscroll-behavior: none;
 }
 
 @media (prefers-color-scheme: dark) {

@@ -1,6 +1,7 @@
 import type { Component } from "solid-js";
-import { batch, createEffect } from "solid-js";
+import { batch, createEffect, createSignal } from "solid-js";
 import { clamp, createTrigger, extract } from "./utils";
+import styles from "./styles.module.css";
 
 const { pow } = Math;
 
@@ -23,6 +24,8 @@ const ChannelSpectrum: Component<{
 }> = (props) => {
     let canvas!: HTMLCanvasElement;
     let canvasContainer!: HTMLDivElement;
+
+    const [scrolling, setScrolling] = createSignal(false);
 
     const scaledWidth = (): number => props.targetWidth * (props.horizontalScale ?? 1);
 
@@ -65,13 +68,21 @@ const ChannelSpectrum: Component<{
         setCanvas?.(canvas);
     });
 
+    let scrolledByUs = false;
     createTrigger([extract(props, "horizontalScroll")], (scroll) => {
-        canvasContainer.scrollLeft = scroll;
+        if (!scrolling()) {
+            scrolledByUs = true;
+            canvasContainer.scrollLeft = scroll;
+        }
     });
+
+    // workaround for Safari which does not support scrollend
+    let scrollStopAction: number | undefined;
 
     return (
         <div
             ref={canvasContainer}
+            class={styles["channel-canvas-container"]}
             on:dblclick={(e) => {
                 const { onToggleZoom: toggleZoom } = props;
                 if (toggleZoom) {
@@ -103,10 +114,23 @@ const ChannelSpectrum: Component<{
             on:scroll={{
                 passive: true,
                 handleEvent(e) {
-                    const { onHorizontalScrollChanged: setHorizontalScroll } = props;
-                    setHorizontalScroll?.(e.target.scrollLeft);
+                    if (scrolledByUs) {
+                        scrolledByUs = false;
+                    } else {
+                        const { onHorizontalScrollChanged: setHorizontalScroll } = props;
+                        setScrolling(true);
+                        setHorizontalScroll?.(e.target.scrollLeft);
+                        if (scrollStopAction) {
+                            clearTimeout(scrollStopAction);
+                        }
+                        scrollStopAction = setTimeout(() => {
+                            setScrolling(false);
+                            scrollStopAction = void 0;
+                        }, 100);
+                    }
                 },
             }}
+            on:scrollend={() => void setScrolling(false)}
             on:mousemove={(e) => {
                 const {
                     targetWidth,
