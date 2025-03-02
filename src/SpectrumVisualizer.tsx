@@ -1,10 +1,10 @@
 import type { Component, Signal } from "solid-js";
-import { createSignal, Index, onCleanup, onMount, createEffect, untrack, createSelector, batch } from "solid-js";
+import { createSignal, Index, onCleanup, onMount, createEffect, untrack, createSelector } from "solid-js";
 import ChannelSpectrum from "./ChannelSpectrum";
-import { createDerived, createTrigger, extract, clamp, createSafeResource } from "./utils";
+import { createDerived, createTrigger, extract, createSafeResource } from "./utils";
 import styles from "./styles.module.css";
 
-const { PI, sin, round, ceil, pow } = Math;
+const { PI, sin, round, ceil } = Math;
 
 function generatePalette(fn: (level: number) => number): number[] {
     const palette: number[] = [];
@@ -99,10 +99,6 @@ const palettes = {
         }),
     ),
 };
-
-function isModifierPreventing(e: MouseEvent | KeyboardEvent): boolean {
-    return e.getModifierState("Accel");
-}
 
 const SpectrumVisualizer: Component<{
     blob?: Blob;
@@ -310,101 +306,31 @@ const SpectrumVisualizer: Component<{
     const [horizontalScale, setHorizontalScale] = createSignal<number>(1);
     const [horizontalScroll, setHorizontalScroll] = createSignal<number>(0);
 
-    const stableScale = (e: MouseEvent & { currentTarget: HTMLElement }, newScale: number): void => {
-        const oldScale = horizontalScale();
-        const oldScroll = horizontalScroll();
-        const newScroll = clamp(
-            oldScroll + (e.x - e.currentTarget.getBoundingClientRect().left + oldScroll) * (newScale / oldScale - 1),
-            0,
-            targetSize().width * (newScale - 1),
-        );
-        batch(() => {
-            setHorizontalScale(newScale);
-            setHorizontalScroll(newScroll);
-        });
-    };
-
-    const scalePixelToPixel = (
-        e: MouseEvent & { currentTarget: HTMLElement },
-        pixelWidth: number,
-        targetWidth: number,
-    ): void => {
-        const oldScale = horizontalScale();
-        const pixelToPixelScale = pixelWidth / targetWidth / devicePixelRatio;
-        const newScale = oldScale == pixelToPixelScale ? 1 : pixelToPixelScale;
-        stableScale(e, newScale);
-    };
-
     return (
         <div class={styles["visualizing-stage"]} ref={stage}>
             <Index each={channelPropList()}>
                 {(item, index) => (
-                    <div
-                        on:dblclick={(e) => {
-                            e.preventDefault();
+                    <ChannelSpectrum
+                        onCanvasChanged={item().ref}
+                        pixelWidth={item().width}
+                        pixelHeight={item().height}
+                        targetWidth={targetSize().width}
+                        targetHeight={
+                            targetSize().height / (isZoomedChannel(index) ? 1 : audioBuffer()!.numberOfChannels)
+                        }
+                        horizontalScale={horizontalScale()}
+                        onHorizontalScaleChanged={setHorizontalScale}
+                        hide={zoomedChannel() != null && !isZoomedChannel(index)}
+                        onToggleZoom={() => {
                             if (isZoomedChannel(index)) {
                                 setZoomedChannel(void 0);
                             } else {
                                 setZoomedChannel(index);
                             }
                         }}
-                        on:wheel={{
-                            passive: false,
-                            handleEvent(e) {
-                                if (
-                                    e.deltaX == 0 &&
-                                    e.deltaMode == WheelEvent.DOM_DELTA_PIXEL &&
-                                    !isModifierPreventing(e)
-                                ) {
-                                    e.preventDefault();
-                                    stableScale(
-                                        e,
-                                        clamp(
-                                            horizontalScale() * pow(1.2, -e.deltaY / 100),
-                                            1,
-                                            ((item().width / targetSize().width) * 2) / devicePixelRatio,
-                                        ),
-                                    );
-                                }
-                            },
-                        }}
-                        on:scroll={{
-                            passive: true,
-                            handleEvent(e) {
-                                setHorizontalScroll(e.target.scrollLeft);
-                            },
-                        }}
-                        on:mousemove={(e) => {
-                            if (e.buttons == 1 && !isModifierPreventing(e)) {
-                                setHorizontalScroll((prev) =>
-                                    clamp(prev - e.movementX, 0, targetSize().width * (horizontalScale() - 1)),
-                                );
-                            }
-                        }}
-                        on:mousedown={(e) => {
-                            if (e.button == 1 && !isModifierPreventing(e)) {
-                                e.preventDefault();
-                                scalePixelToPixel(e, item().width, targetSize().width);
-                            }
-                        }}
-                        style={zoomedChannel() != null && !isZoomedChannel(index) ? { display: "none" } : {}}
-                        // @ts-expect-error webkit proprietary
-                        on:webkitmouseforcewillbegin={(e: MouseEvent) => e.preventDefault()}
-                        on:webkitmouseforcedown={(e: MouseEvent & { currentTarget: HTMLElement }) =>
-                            scalePixelToPixel(e, item().width, targetSize().width)
-                        }
-                        prop:scrollLeft={horizontalScroll()}
-                    >
-                        <ChannelSpectrum
-                            canvasRef={item().ref}
-                            pixelWidth={item().width}
-                            pixelHeight={item().height}
-                            targetWidth={targetSize().width * horizontalScale()}
-                            targetHeight={
-                                targetSize().height / (isZoomedChannel(index) ? 1 : audioBuffer()!.numberOfChannels)
-                            }
-                        />
-                    </div>
+                        horizontalScroll={horizontalScroll()}
+                        onHorizontalScrollChanged={setHorizontalScroll}
+                    />
                 )}
             </Index>
         </div>
