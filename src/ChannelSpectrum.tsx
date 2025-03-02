@@ -140,7 +140,7 @@ const ChannelSpectrum: Component<{
                 } = props;
                 if (
                     horizontalScale &&
-                    horizontalScroll &&
+                    horizontalScroll != null &&
                     setHorizontalScroll &&
                     e.buttons == 1 &&
                     !isModifierPreventing(e)
