@@ -2,6 +2,7 @@ import type { Component } from "solid-js";
 import { batch, createEffect, createSignal } from "solid-js";
 import { clamp, createTrigger, extract } from "./utils";
 import styles from "./styles.module.css";
+import ChannelAxisY from "./ChannelAxisY.tsx";
 
 const { pow } = Math;
 
@@ -15,6 +16,8 @@ const ChannelSpectrum: Component<{
     pixelHeight: number;
     targetWidth: number;
     targetHeight: number;
+    minFreq: number;
+    maxFreq: number;
     horizontalScale?: number;
     onHorizontalScaleChanged?: (newScale: number) => void;
     hide?: boolean;
@@ -27,22 +30,24 @@ const ChannelSpectrum: Component<{
 
     const [scrolling, setScrolling] = createSignal(false);
 
-    const scaledWidth = (): number => props.targetWidth * (props.horizontalScale ?? 1);
+    const axisYwidth = 60;
+    const canvasTargetWidth = (): number => props.targetWidth - axisYwidth;
+    const scaledCanvasWidth = (): number => canvasTargetWidth() * (props.horizontalScale ?? 1);
 
     const stableScale = (e: MouseEvent & { currentTarget: HTMLElement }, newScale: number): void => {
         const {
             horizontalScale: oldScale,
             onHorizontalScaleChanged: setHorizontalScale,
-            targetWidth,
             onHorizontalScrollChanged: setHorizontalScroll,
         } = props;
+        const canvasWidth = canvasTargetWidth();
         const oldScroll = props.horizontalScroll ?? 0;
         if (!oldScale || !setHorizontalScale) return;
         e.preventDefault();
         const newScroll = clamp(
             oldScroll + (e.x - e.currentTarget.getBoundingClientRect().left + oldScroll) * (newScale / oldScale - 1),
             0,
-            targetWidth * (newScale - 1),
+            canvasWidth * (newScale - 1),
         );
         batch(() => {
             setHorizontalScale(newScale);
@@ -53,10 +58,10 @@ const ChannelSpectrum: Component<{
     const scalePixelToPixel = (
         e: MouseEvent & { currentTarget: HTMLElement },
         pixelWidth: number,
-        targetWidth: number,
+        canvasWidth: number,
     ): void => {
         const { horizontalScale: oldScale } = props;
-        const pixelToPixelScale = pixelWidth / targetWidth / devicePixelRatio;
+        const pixelToPixelScale = pixelWidth / canvasWidth / devicePixelRatio;
         const newScale = oldScale == pixelToPixelScale ? 1 : pixelToPixelScale;
         stableScale(e, newScale);
     };
@@ -80,102 +85,111 @@ const ChannelSpectrum: Component<{
     let scrollStopAction: number | undefined;
 
     return (
-        <div
-            ref={canvasContainer}
-            class={styles["channel-canvas-container"]}
-            on:dblclick={(e) => {
-                const { onToggleZoom: toggleZoom } = props;
-                if (toggleZoom) {
-                    e.preventDefault();
-                    toggleZoom();
-                }
-            }}
-            on:wheel={{
-                passive: false,
-                handleEvent(e) {
-                    const { horizontalScale, pixelWidth, targetWidth } = props;
+        <div class={styles["channel-plot"]}>
+            <ChannelAxisY
+                width={axisYwidth}
+                height={props.targetHeight}
+                minFreq={props.minFreq}
+                maxFreq={props.maxFreq}
+            />
+            <div
+                ref={canvasContainer}
+                class={styles["channel-canvas-container"]}
+                on:dblclick={(e) => {
+                    const { onToggleZoom: toggleZoom } = props;
+                    if (toggleZoom) {
+                        e.preventDefault();
+                        toggleZoom();
+                    }
+                }}
+                on:wheel={{
+                    passive: false,
+                    handleEvent(e) {
+                        const { horizontalScale, pixelWidth } = props;
+                        const canvasWidth = canvasTargetWidth();
+                        if (
+                            horizontalScale &&
+                            e.deltaX == 0 &&
+                            e.deltaMode == WheelEvent.DOM_DELTA_PIXEL &&
+                            !isModifierPreventing(e)
+                        ) {
+                            stableScale(
+                                e,
+                                clamp(
+                                    horizontalScale * pow(1.2, -e.deltaY / 100),
+                                    1,
+                                    ((pixelWidth / canvasWidth) * 2) / devicePixelRatio,
+                                ),
+                            );
+                        }
+                    },
+                }}
+                on:scroll={{
+                    passive: true,
+                    handleEvent(e) {
+                        if (scrolledByUs) {
+                            scrolledByUs = false;
+                        } else {
+                            const { onHorizontalScrollChanged: setHorizontalScroll } = props;
+                            setScrolling(true);
+                            setHorizontalScroll?.(e.target.scrollLeft);
+                            if (scrollStopAction) {
+                                clearTimeout(scrollStopAction);
+                            }
+                            scrollStopAction = setTimeout(() => {
+                                setScrolling(false);
+                                scrollStopAction = void 0;
+                            }, 100);
+                        }
+                    },
+                }}
+                on:scrollend={() => void setScrolling(false)}
+                on:mousemove={(e) => {
+                    const { horizontalScale, horizontalScroll, onHorizontalScrollChanged: setHorizontalScroll } = props;
+                    const canvasWidth = canvasTargetWidth();
                     if (
                         horizontalScale &&
-                        e.deltaX == 0 &&
-                        e.deltaMode == WheelEvent.DOM_DELTA_PIXEL &&
+                        horizontalScroll != null &&
+                        setHorizontalScroll &&
+                        e.buttons == 1 &&
                         !isModifierPreventing(e)
                     ) {
-                        stableScale(
-                            e,
+                        setHorizontalScroll(
                             clamp(
-                                horizontalScale * pow(1.2, -e.deltaY / 100),
-                                1,
-                                ((pixelWidth / targetWidth) * 2) / devicePixelRatio,
+                                horizontalScroll - e.movementX / devicePixelRatio,
+                                0,
+                                canvasWidth * (horizontalScale - 1),
                             ),
                         );
                     }
-                },
-            }}
-            on:scroll={{
-                passive: true,
-                handleEvent(e) {
-                    if (scrolledByUs) {
-                        scrolledByUs = false;
-                    } else {
-                        const { onHorizontalScrollChanged: setHorizontalScroll } = props;
-                        setScrolling(true);
-                        setHorizontalScroll?.(e.target.scrollLeft);
-                        if (scrollStopAction) {
-                            clearTimeout(scrollStopAction);
-                        }
-                        scrollStopAction = setTimeout(() => {
-                            setScrolling(false);
-                            scrollStopAction = void 0;
-                        }, 100);
+                }}
+                on:mousedown={(e) => {
+                    const { pixelWidth } = props;
+                    const canvasWidth = canvasTargetWidth();
+                    if (e.button == 1 && !isModifierPreventing(e)) {
+                        scalePixelToPixel(e, pixelWidth, canvasWidth);
                     }
-                },
-            }}
-            on:scrollend={() => void setScrolling(false)}
-            on:mousemove={(e) => {
-                const {
-                    targetWidth,
-                    horizontalScale,
-                    horizontalScroll,
-                    onHorizontalScrollChanged: setHorizontalScroll,
-                } = props;
-                if (
-                    horizontalScale &&
-                    horizontalScroll != null &&
-                    setHorizontalScroll &&
-                    e.buttons == 1 &&
-                    !isModifierPreventing(e)
-                ) {
-                    setHorizontalScroll(
-                        clamp(
-                            horizontalScroll - e.movementX / devicePixelRatio,
-                            0,
-                            targetWidth * (horizontalScale - 1),
-                        ),
-                    );
-                }
-            }}
-            on:mousedown={(e) => {
-                const { pixelWidth, targetWidth } = props;
-                if (e.button == 1 && !isModifierPreventing(e)) {
-                    scalePixelToPixel(e, pixelWidth, targetWidth);
-                }
-            }}
-            style={props.hide ? { display: "none" } : {}}
-            // @ts-expect-error webkit proprietary
-            on:webkitmouseforcewillbegin={(e: MouseEvent) => e.preventDefault()}
-            on:webkitmouseforcedown={(e: MouseEvent & { currentTarget: HTMLElement }) => {
-                const { pixelWidth, targetWidth } = props;
-                scalePixelToPixel(e, pixelWidth, targetWidth);
-            }}
-        >
-            <div style={{ width: `${scaledWidth()}px`, height: `${props.targetHeight}px`, overflow: "hidden" }}>
-                <canvas
-                    ref={canvas}
-                    style={{
-                        "transform": `scale(${scaledWidth() / props.pixelWidth},${props.targetHeight / props.pixelHeight})`,
-                        "transform-origin": "0 0",
-                    }}
-                />
+                }}
+                style={props.hide ? { display: "none" } : {}}
+                // @ts-expect-error webkit proprietary
+                on:webkitmouseforcewillbegin={(e: MouseEvent) => e.preventDefault()}
+                on:webkitmouseforcedown={(e: MouseEvent & { currentTarget: HTMLElement }) => {
+                    const { pixelWidth } = props;
+                    const canvasWidth = canvasTargetWidth();
+                    scalePixelToPixel(e, pixelWidth, canvasWidth);
+                }}
+            >
+                <div
+                    style={{ width: `${scaledCanvasWidth()}px`, height: `${props.targetHeight}px`, overflow: "hidden" }}
+                >
+                    <canvas
+                        ref={canvas}
+                        style={{
+                            "transform": `scale(${scaledCanvasWidth() / props.pixelWidth},${props.targetHeight / props.pixelHeight})`,
+                            "transform-origin": "0 0",
+                        }}
+                    />
+                </div>
             </div>
         </div>
     );

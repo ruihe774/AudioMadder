@@ -319,6 +319,8 @@ const SpectrumVisualizer: Component<{
                         targetHeight={
                             targetSize().height / (isZoomedChannel(index) ? 1 : audioBuffer()!.numberOfChannels)
                         }
+                        minFreq={0}
+                        maxFreq={audioBuffer()!.sampleRate / 2}
                         horizontalScale={horizontalScale()}
                         onHorizontalScaleChanged={setHorizontalScale}
                         hide={zoomedChannel() != null && !isZoomedChannel(index)}

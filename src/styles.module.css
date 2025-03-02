@@ -32,3 +32,8 @@
     overflow-x: overlay;
     overscroll-behavior: none;
 }
+
+.channel-plot {
+    display: grid;
+    grid-template-columns: 60px 1fr;
+}
