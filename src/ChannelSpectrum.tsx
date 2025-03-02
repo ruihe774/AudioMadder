@@ -145,7 +145,13 @@ const ChannelSpectrum: Component<{
                     e.buttons == 1 &&
                     !isModifierPreventing(e)
                 ) {
-                    setHorizontalScroll(clamp(horizontalScroll - e.movementX, 0, targetWidth * (horizontalScale - 1)));
+                    setHorizontalScroll(
+                        clamp(
+                            horizontalScroll - e.movementX / devicePixelRatio,
+                            0,
+                            targetWidth * (horizontalScale - 1),
+                        ),
+                    );
                 }
             }}
             on:mousedown={(e) => {
