@@ -31,5 +31,5 @@ export function extract<T, K extends keyof T>(o: T | (() => T | undefined), n: K
 }
 
 export function clamp(x: number, low: number, high: number): number {
-    return x < low ? low : x > high ? high : x;
+    return low < high ? (x < low ? low : x > high ? high : x) : low;
 }

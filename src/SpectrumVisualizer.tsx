@@ -334,6 +334,17 @@ const SpectrumVisualizer: Component<{
         });
     };
 
+    const scalePixelToPixel = (
+        e: MouseEvent & { currentTarget: HTMLElement },
+        pixelWidth: number,
+        targetWidth: number,
+    ): void => {
+        const oldScale = horizontalScale();
+        const pixelToPixelScale = pixelWidth / targetWidth / devicePixelRatio;
+        const newScale = oldScale == pixelToPixelScale ? 1 : pixelToPixelScale;
+        stableScale(e, newScale);
+    };
+
     return (
         <div class={styles["visualizing-stage"]} ref={stage}>
             <Index each={channelPropList()}>
@@ -383,15 +394,16 @@ const SpectrumVisualizer: Component<{
                         on:mousedown={(e) => {
                             if (e.button == 1 && !isModifierPreventing(e)) {
                                 e.preventDefault();
-                                const oldScale = horizontalScale();
-                                const pixelToPixelScale = item().width / targetSize().width / devicePixelRatio;
-                                const newScale = oldScale == pixelToPixelScale ? 1 : pixelToPixelScale;
-                                stableScale(e, newScale);
+                                scalePixelToPixel(e, item().width, targetSize().width);
                             }
                         }}
-                        // @ts-expect-error prop:xxx not typed
-                        prop:scrollLeft={horizontalScroll()}
                         style={zoomedChannel() != null && !isZoomedChannel(index) ? { display: "none" } : {}}
+                        // @ts-expect-error webkit proprietary
+                        on:webkitmouseforcewillbegin={(e: MouseEvent) => e.preventDefault()}
+                        on:webkitmouseforcedown={(e: MouseEvent & { currentTarget: HTMLElement }) =>
+                            scalePixelToPixel(e, item().width, targetSize().width)
+                        }
+                        prop:scrollLeft={horizontalScroll()}
                     >
                         <ChannelSpectrum
                             canvasRef={item().ref}
