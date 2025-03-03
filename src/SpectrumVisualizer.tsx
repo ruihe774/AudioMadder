@@ -1,5 +1,6 @@
 import type { Component, Signal } from "solid-js";
-import { createSignal, Index, onCleanup, onMount, createEffect, untrack, createSelector } from "solid-js";
+import { createSignal, Index, createEffect, untrack, createSelector } from "solid-js";
+import { createElementSize } from "@solid-primitives/resize-observer";
 import ChannelSpectrum from "./ChannelSpectrum";
 import { createDerived, createAsync, extractProps } from "./utils";
 import styles from "./styles.module.css";
@@ -280,21 +281,7 @@ const SpectrumVisualizer: Component<{
     );
 
     let stage!: HTMLDivElement;
-    const [targetSize, setTargetSize] = createSignal<{ width: number; height: number }>({ width: 0, height: 0 });
-    const observer = new ResizeObserver((entries) => {
-        for (const entry of entries) {
-            if (entry.target === stage) {
-                const boxSize = entry.borderBoxSize[0];
-                setTargetSize({ width: boxSize.inlineSize, height: boxSize.blockSize });
-            }
-        }
-    });
-    onMount(() => {
-        observer.observe(stage);
-    });
-    onCleanup(() => {
-        observer.disconnect();
-    });
+    const targetSize = createElementSize(() => stage);
 
     createEffect(() => {
         const setState = untrack(() => onStateChanged() ?? (() => void 0));
@@ -342,9 +329,9 @@ const SpectrumVisualizer: Component<{
                         onCanvasChanged={item().ref}
                         pixelWidth={item().width}
                         pixelHeight={item().height}
-                        targetWidth={targetSize().width}
+                        targetWidth={targetSize.width!}
                         targetHeight={
-                            targetSize().height / (isZoomedChannel(index) ? 1 : audioBuffer()!.numberOfChannels)
+                            targetSize.height! / (isZoomedChannel(index) ? 1 : audioBuffer()!.numberOfChannels)
                         }
                         minFreq={0}
                         maxFreq={audioBuffer()!.sampleRate / 2}
