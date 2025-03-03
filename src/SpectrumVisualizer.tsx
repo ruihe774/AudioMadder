@@ -100,6 +100,18 @@ const palettes = {
     ),
 };
 
+function generateIndices(logBase: number, length: number): number[] | undefined {
+    if (logBase == 1) {
+        return;
+    }
+    const indices: number[] = [];
+    const ymax = length - 1;
+    for (let i = 0; i < length; ++i) {
+        indices.push(round((log(((logBase - 1) * i) / ymax + 1) * ymax) / log(logBase)));
+    }
+    return indices;
+}
+
 const SpectrumVisualizer: Component<{
     blob?: Blob;
     fftSize: number;
@@ -134,6 +146,7 @@ const SpectrumVisualizer: Component<{
     });
 
     const audioSystem = createDerived([audioBuffer], (audioBuffer) => {
+        const { fftSize, palette, logBase } = props;
         const audioContext = new OfflineAudioContext(
             audioBuffer.numberOfChannels,
             audioBuffer.length,
@@ -148,7 +161,7 @@ const SpectrumVisualizer: Component<{
         const analysers: AnalyserNode[] = [];
         for (let i = 0; i < audioBuffer.numberOfChannels; ++i) {
             const analyser = audioContext.createAnalyser();
-            analyser.fftSize = props.fftSize;
+            analyser.fftSize = fftSize;
             analyser.smoothingTimeConstant = 0;
             analyser.minDecibels = -120;
             analyser.maxDecibels = 0;
@@ -156,11 +169,9 @@ const SpectrumVisualizer: Component<{
             analyser.connect(channelMerger, 0, i);
             analysers.push(analyser);
         }
-        const scriptProcessor = audioContext.createScriptProcessor(props.fftSize, 1, 1);
+        const scriptProcessor = audioContext.createScriptProcessor(fftSize, 1, 1);
         channelMerger.connect(scriptProcessor);
         scriptProcessor.connect(audioContext.destination);
-        const palette = palettes[props.palette]();
-        const { logBase } = props;
         return {
             audioContext,
             bufferSource,
@@ -168,8 +179,8 @@ const SpectrumVisualizer: Component<{
             analysers,
             channelMerger,
             scriptProcessor,
-            palette,
-            logBase,
+            palette: palettes[palette](),
+            indices: generateIndices(logBase, analysers[0].frequencyBinCount),
         };
     });
 
@@ -208,7 +219,7 @@ const SpectrumVisualizer: Component<{
         untrack(() => {
             resetAnalysing();
             const currentAbortSignal = (analysingAbortController = new AbortController()).signal;
-            const { audioContext, bufferSource, analysers, scriptProcessor, palette, logBase } = audioSystem;
+            const { audioContext, bufferSource, analysers, scriptProcessor, palette, indices } = audioSystem;
             const renderingContextList = canvasList.map(
                 (canvas) =>
                     canvas.getContext("2d", {
@@ -226,9 +237,6 @@ const SpectrumVisualizer: Component<{
                 const currentStep = step++;
                 const fftBuffers = analysers.map((analyser) => {
                     const fftBuffer = freeBufferList.pop() ?? new Uint8Array(analyser.frequencyBinCount);
-                    if (fftBuffer.length != analyser.frequencyBinCount) {
-                        throw new Error("invalid buffer");
-                    }
                     analyser.getByteFrequencyData(fftBuffer);
                     return fftBuffer;
                 });
@@ -238,15 +246,14 @@ const SpectrumVisualizer: Component<{
                     const ymax = length - 1;
                     const imageData = imageDataList[i];
                     const imageView = new DataView(imageData.data.buffer);
-                    if (logBase == 1) {
+                    if (indices) {
+                        for (let i = 0; i < length; ++i) {
+                            imageView.setUint32(4 * i, palette[fftBuffer[ymax - indices[i]]], true);
+                        }
+                    } else {
                         fftBuffer.forEach((v, i) => {
                             imageView.setUint32(4 * (ymax - i), palette[v], true);
                         });
-                    } else {
-                        for (let i = 0; i < length; ++i) {
-                            const y = round((log(((logBase - 1) * i) / ymax + 1) * ymax) / log(logBase));
-                            imageView.setUint32(4 * i, palette[fftBuffer[ymax - y]], true);
-                        }
                     }
                     freeBufferList.push(fftBuffer);
                     renderingContext.putImageData(imageData, currentStep, 0);
