@@ -5,6 +5,7 @@ import { defaultFFTPower, defaultLogBase, defaultPalette } from "./SpectrumVisua
 import type { SpectrumVisualizerPalette, SpectrumVisualizerState } from "./SpectrumVisualizer";
 import SpectrumVisualizer from "./SpectrumVisualizer";
 import styles from "./styles.module.css";
+import { createTrigger } from "./utils.ts";
 
 const App = (): JSXElement => {
     let fileInput!: HTMLInputElement;
@@ -25,6 +26,10 @@ const App = (): JSXElement => {
     const [playing, setPlaying] = createSignal(false);
     const [currentPlayingTime, setCurrentPlayingTime] = createSignal(0);
     const updateCurrentPlayingTime = () => void setCurrentPlayingTime(audioPlayer.currentTime);
+    const [seekRequest, setSeekRequest] = createSignal<number>();
+    const newPlayingTime = createDeferred(seekRequest, {
+        timeoutMs: 50,
+    });
     const audioURL = createMemo<string | undefined>((prev) => {
         if (prev) {
             URL.revokeObjectURL(prev);
@@ -50,6 +55,10 @@ const App = (): JSXElement => {
         if (invalid()) {
             setPlaying(false);
         }
+    });
+    createTrigger([newPlayingTime], (newPlayingTime) => {
+        audioPlayer.currentTime = newPlayingTime;
+        setSeekRequest(void 0);
     });
 
     return (
@@ -162,7 +171,7 @@ const App = (): JSXElement => {
                 palette={palette()}
                 currentPlayingTime={playing() ? currentPlayingTime() : void 0}
                 onStateChanged={setState}
-                onSeekRequest={(time) => void (audioPlayer.currentTime = time)}
+                onSeekRequest={setSeekRequest}
             />
         </>
     );
