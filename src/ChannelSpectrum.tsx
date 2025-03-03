@@ -1,7 +1,7 @@
 import type { Component } from "solid-js";
 import { Show } from "solid-js";
 import { batch, createEffect, createSignal } from "solid-js";
-import { clamp, createTrigger, extract } from "./utils";
+import { clamp, createTrigger } from "./utils";
 import ChannelAxisY from "./ChannelAxisY.tsx";
 import ChannelAxisX from "./ChannelAxisX.tsx";
 import PlayingHead from "./PlayingHead.tsx";
@@ -86,7 +86,7 @@ const ChannelSpectrum: Component<{
     });
 
     let scrolledByUs = false;
-    createTrigger([extract(props, "horizontalScroll")], (scroll) => {
+    createTrigger([() => props.horizontalScroll], (scroll) => {
         if (!scrolling()) {
             scrolledByUs = true;
             canvasContainer.scrollLeft = scroll;
@@ -101,7 +101,7 @@ const ChannelSpectrum: Component<{
     let playingHeadTransitionTime = 0;
     let playingHeadTransitionAnimation: Animation | undefined;
     let playingHeadDragging = false;
-    createTrigger([extract(props, "currentPlayingTime")], (currentPlayingTime) => {
+    createTrigger([() => props.currentPlayingTime], (currentPlayingTime) => {
         const currentTime = performance.now();
         const newTransitionTime = currentTime - lastPlayingTimeUpdate;
         if (newTransitionTime < 300) {

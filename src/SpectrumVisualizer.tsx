@@ -1,7 +1,7 @@
 import type { Component, Signal } from "solid-js";
 import { createSignal, Index, onCleanup, onMount, createEffect, untrack, createSelector } from "solid-js";
 import ChannelSpectrum from "./ChannelSpectrum";
-import { createDerived, createTrigger, extract, createSafeResource } from "./utils";
+import { createDerived, createTrigger, createSafeResource } from "./utils";
 import styles from "./styles.module.css";
 
 const { PI, sin, round, ceil, log } = Math;
@@ -121,23 +121,25 @@ const SpectrumVisualizer: Component<{
     onStateChanged?: (state: SpectrumVisualizerState) => void;
     onSeekRequest?: (time: number) => void;
 }> = (props) => {
-    const [audioBuffer] = createSafeResource(extract(props, "blob"), (blob) =>
-        new Promise<ArrayBuffer>((resolve, reject) => {
-            const reader = new FileReader();
-            reader.readAsArrayBuffer(blob);
-            reader.onload = () => {
-                resolve(reader.result as ArrayBuffer);
-            };
-            reader.onerror = () => {
-                reject(reader.error!);
-            };
-        }).then((arrayBuffer) => {
-            const audioContext = new AudioContext();
-            return audioContext.decodeAudioData(arrayBuffer);
-        }),
+    const [audioBuffer] = createSafeResource(
+        () => props.blob,
+        (blob) =>
+            new Promise<ArrayBuffer>((resolve, reject) => {
+                const reader = new FileReader();
+                reader.readAsArrayBuffer(blob);
+                reader.onload = () => {
+                    resolve(reader.result as ArrayBuffer);
+                };
+                reader.onerror = () => {
+                    reject(reader.error!);
+                };
+            }).then((arrayBuffer) => {
+                const audioContext = new AudioContext();
+                return audioContext.decodeAudioData(arrayBuffer);
+            }),
     );
 
-    const canvasRefs = createDerived([extract(audioBuffer, "numberOfChannels")], (numberOfChannels) => {
+    const canvasRefs = createDerived([() => audioBuffer()?.numberOfChannels], (numberOfChannels) => {
         const canvasRefs: Signal<HTMLCanvasElement | undefined>[] = [];
         for (let i = 0; i < numberOfChannels; ++i) {
             canvasRefs.push(createSignal());
@@ -294,7 +296,7 @@ const SpectrumVisualizer: Component<{
     });
 
     createEffect(() => {
-        const setState = untrack(extract(props, "onStateChanged")) ?? (() => void 0);
+        const setState = untrack(() => props.onStateChanged ?? (() => void 0));
         switch (audioBuffer.state) {
             case "unresolved":
                 resetAnalysing();

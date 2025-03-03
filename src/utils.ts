@@ -26,10 +26,6 @@ export function createTrigger<T extends any[]>(
     return createEffect(createHelper(deps, fn));
 }
 
-export function extract<T, K extends keyof T>(o: T | (() => T | undefined), n: K): () => T[K] | undefined {
-    return typeof o == "function" ? () => (o as () => T | undefined)()?.[n] : () => o[n];
-}
-
 interface Unresolved {
     state: "unresolved";
     loading: false;
