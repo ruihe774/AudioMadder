@@ -1,5 +1,5 @@
-import type { Accessor, ResourceActions, ResourceFetcher, ResourceOptions } from "solid-js";
-import { createMemo, createEffect, createResource, untrack, createSignal } from "solid-js";
+import type { Accessor } from "solid-js";
+import { createMemo, createEffect, untrack, createSignal, onCleanup } from "solid-js";
 import { throttle } from "@solid-primitives/scheduled";
 
 function createHelper<T extends any[], R>(
@@ -62,39 +62,88 @@ interface Errored {
     latest: never;
     (): undefined;
 }
+export type AsyncSignal<T> = Unresolved | Pending | Ready<T> | Refreshing<T> | Errored;
 
-export type SafeResourceSource<S> = S | (() => S | undefined);
-export type SafeResource<T> = Unresolved | Pending | Ready<T> | Refreshing<T> | Errored;
-export type SafeResourceReturn<T, R = unknown> = [SafeResource<T>, ResourceActions<T | undefined, R>];
-
-export function createSafeResource<T, S, R = unknown>(
-    source: SafeResourceSource<S>,
-    fetcher: ResourceFetcher<S, T, R>,
-    options?: ResourceOptions<NoInfer<T>, S>,
-): SafeResourceReturn<T, R> {
-    const [read, action] = createResource(source, fetcher, options);
-
-    const isSourceVoid = (): boolean =>
-        source === void 0 || (typeof source == "function" && (source as () => S | undefined)() === void 0);
-
-    const safeRead = createMemo((): T | undefined => (!isSourceVoid() && read.state != "errored" ? read() : void 0));
-
-    Object.defineProperties(safeRead, {
-        state: {
-            get: () => (isSourceVoid() ? "unresolved" : read.state),
-        },
-        error: {
-            get: () => (isSourceVoid() ? void 0 : read.error),
-        },
-        loading: {
-            get: () => !isSourceVoid() && read.loading,
-        },
-        latest: {
-            get: () => (isSourceVoid() ? void 0 : read.latest),
-        },
+export function createAsync<T extends any[], R>(
+    deps: { readonly [K in keyof T]: Accessor<T[K] | undefined> },
+    fn: (abort: AbortSignal, ...args: T) => Promise<R>,
+): [AsyncSignal<R>, AbortController["abort"]] {
+    let abortController: AbortController | undefined;
+    const abort = (reason?: any): void => abortController?.abort(reason);
+    onCleanup(abort);
+    const getPromise = createHelper(deps, (...args) => fn((abortController = new AbortController()).signal, ...args));
+    type AsyncStore = Omit<AsyncSignal<R>, "()">;
+    const unresolvedValue: AsyncStore = {
+        state: "unresolved",
+        loading: false,
+        error: void 0,
+        latest: void 0,
+    };
+    const [asyncSignal, setAsyncSignal] = createSignal<AsyncStore>(unresolvedValue);
+    let currentPromise: Promise<void> | undefined;
+    createEffect(() => {
+        abort();
+        const promise = getPromise();
+        if (promise === void 0) {
+            setAsyncSignal(unresolvedValue);
+            currentPromise = void 0;
+        } else {
+            const lastState = untrack(asyncSignal);
+            setAsyncSignal(
+                lastState.state == "ready" || lastState.state == "refreshing"
+                    ? {
+                          state: "refreshing",
+                          loading: true,
+                          error: void 0,
+                          latest: lastState.latest,
+                      }
+                    : {
+                          state: "pending",
+                          loading: true,
+                          error: void 0,
+                          latest: void 0,
+                      },
+            );
+            const thisPromise = (currentPromise = promise.then(
+                (value) => {
+                    if (currentPromise === thisPromise)
+                        setAsyncSignal({
+                            state: "ready",
+                            loading: false,
+                            error: void 0,
+                            latest: value,
+                        });
+                },
+                (error) => {
+                    if (currentPromise === thisPromise)
+                        setAsyncSignal({
+                            state: "errored",
+                            loading: false,
+                            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+                            error,
+                            latest: void 0,
+                        });
+                },
+            ));
+        }
     });
 
-    return [safeRead as SafeResource<T>, action];
+    const read = createMemo(() => asyncSignal().latest);
+    Object.defineProperties(read, {
+        state: {
+            get: createMemo(() => asyncSignal().state),
+        },
+        error: {
+            get: createMemo(() => asyncSignal().error),
+        },
+        loading: {
+            get: createMemo(() => asyncSignal().loading),
+        },
+        latest: {
+            get: read,
+        },
+    });
+    return [read as AsyncSignal<R>, abort];
 }
 
 export function createThrottled<T>(source: Accessor<T | undefined>, timeout: number): Accessor<T | undefined> {

@@ -1,7 +1,7 @@
 import type { Component, Signal } from "solid-js";
 import { createSignal, Index, onCleanup, onMount, createEffect, untrack, createSelector } from "solid-js";
 import ChannelSpectrum from "./ChannelSpectrum";
-import { createDerived, createTrigger, createSafeResource, extractProps } from "./utils";
+import { createDerived, createAsync, extractProps } from "./utils";
 import styles from "./styles.module.css";
 
 const { PI, sin, round, ceil, log } = Math;
@@ -131,7 +131,7 @@ const SpectrumVisualizer: Component<{
     );
     const fftSize = (): number => 1 << fftPower();
 
-    const [audioBuffer] = createSafeResource(blob, (blob) =>
+    const [audioBuffer] = createAsync([blob], (abortSignal, blob) =>
         new Promise<ArrayBuffer>((resolve, reject) => {
             const reader = new FileReader();
             reader.readAsArrayBuffer(blob);
@@ -141,6 +141,7 @@ const SpectrumVisualizer: Component<{
             reader.onerror = () => {
                 reject(reader.error!);
             };
+            abortSignal.onabort = () => reader.abort();
         }).then((arrayBuffer) => {
             const audioContext = new AudioContext();
             return audioContext.decodeAudioData(arrayBuffer);
@@ -218,16 +219,9 @@ const SpectrumVisualizer: Component<{
 
     const [progress, setProgress] = createSignal<number | Error>(0);
     let analysingTotalTime!: number;
-    let analysingAbortController = new AbortController();
-    const resetAnalysing = (): void => {
-        setProgress(0);
-        analysingAbortController.abort();
-    };
 
-    createTrigger([audioSystem, canvasList], (audioSystem, canvasList) =>
+    const [_, abortAnalysing] = createAsync([audioSystem, canvasList], (abortSignal, audioSystem, canvasList) =>
         untrack(() => {
-            resetAnalysing();
-            const currentAbortSignal = (analysingAbortController = new AbortController()).signal;
             const { audioContext, bufferSource, analysers, scriptProcessor, palette, indices } = audioSystem;
             const renderingContextList = canvasList.map(
                 (canvas) =>
@@ -269,7 +263,11 @@ const SpectrumVisualizer: Component<{
                 });
                 setProgress((prevStep) => (prevStep as number) + 1);
             };
-            audioContext
+            abortSignal.onabort = () => {
+                bufferSource.stop();
+            };
+            setProgress(0);
+            return audioContext
                 .startRendering()
                 .then(() => {
                     analysingTotalTime = performance.now() - startTime;
@@ -278,9 +276,6 @@ const SpectrumVisualizer: Component<{
                 .catch((error: Error) => {
                     setProgress(error);
                 });
-            currentAbortSignal.onabort = () => {
-                bufferSource.stop();
-            };
         }),
     );
 
@@ -299,19 +294,18 @@ const SpectrumVisualizer: Component<{
     });
     onCleanup(() => {
         observer.disconnect();
-        analysingAbortController.abort();
     });
 
     createEffect(() => {
         const setState = untrack(() => onStateChanged() ?? (() => void 0));
         switch (audioBuffer.state) {
             case "unresolved":
-                resetAnalysing();
+                abortAnalysing();
                 setState({ type: "inited" });
                 break;
             case "pending":
             case "refreshing":
-                resetAnalysing();
+                abortAnalysing();
                 setState({ type: "decoding" });
                 break;
             case "errored":
