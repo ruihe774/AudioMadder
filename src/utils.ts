@@ -1,5 +1,6 @@
 import type { Accessor, ResourceActions, ResourceFetcher, ResourceOptions } from "solid-js";
-import { createMemo, createEffect, createResource } from "solid-js";
+import { createMemo, createEffect, createResource, untrack, createSignal } from "solid-js";
+import { throttle } from "@solid-primitives/scheduled";
 
 function createHelper<T extends any[], R>(
     deps: { readonly [K in keyof T]: Accessor<T[K] | undefined> },
@@ -94,6 +95,21 @@ export function createSafeResource<T, S, R = unknown>(
     });
 
     return [safeRead as SafeResource<T>, action];
+}
+
+export function createThrottled<T>(source: Accessor<T | undefined>, timeout: number): Accessor<T | undefined> {
+    const [throttled, setThrottled] = createSignal(untrack(source));
+    const updateThrottled = throttle((newValue: T | undefined) => void setThrottled(() => newValue), timeout);
+    createEffect(() => {
+        const newValue = source();
+        if (newValue === void 0) {
+            updateThrottled.clear();
+            setThrottled(void 0);
+        } else {
+            updateThrottled(newValue);
+        }
+    });
+    return throttled;
 }
 
 export function extractProps<P, D extends { [K in keyof D]: K extends keyof P ? Exclude<P[K], undefined> : never }>(

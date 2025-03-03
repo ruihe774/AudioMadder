@@ -12,6 +12,7 @@
         "lint": "eslint src"
     },
     "dependencies": {
+        "@solid-primitives/scheduled": "1.5.*",
         "solid-js": "1.9.*"
     },
     "devDependencies": {

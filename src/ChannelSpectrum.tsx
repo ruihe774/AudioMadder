@@ -1,6 +1,5 @@
 import type { Component } from "solid-js";
-import { Show } from "solid-js";
-import { batch, createEffect, createSignal } from "solid-js";
+import { Show, batch, createEffect, createSignal } from "solid-js";
 import { clamp, createTrigger, extractProps } from "./utils";
 import ChannelAxisY from "./ChannelAxisY.tsx";
 import ChannelAxisX from "./ChannelAxisX.tsx";

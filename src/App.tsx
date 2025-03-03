@@ -1,11 +1,10 @@
-import { createEffect, createMemo } from "solid-js";
 import type { JSXElement } from "solid-js";
-import { createSignal, Switch, Match, batch, createDeferred } from "solid-js";
+import { createEffect, createMemo, createSignal, Switch, Match, batch, createDeferred } from "solid-js";
 import { defaultFFTPower, defaultLogBase, defaultPalette } from "./SpectrumVisualizer";
 import type { SpectrumVisualizerPalette, SpectrumVisualizerState } from "./SpectrumVisualizer";
 import SpectrumVisualizer from "./SpectrumVisualizer";
 import styles from "./styles.module.css";
-import { createTrigger } from "./utils.ts";
+import { createTrigger, createThrottled } from "./utils.ts";
 
 const App = (): JSXElement => {
     let fileInput!: HTMLInputElement;
@@ -27,9 +26,7 @@ const App = (): JSXElement => {
     const [currentPlayingTime, setCurrentPlayingTime] = createSignal(0);
     const updateCurrentPlayingTime = () => void setCurrentPlayingTime(audioPlayer.currentTime);
     const [seekRequest, setSeekRequest] = createSignal<number>();
-    const newPlayingTime = createDeferred(seekRequest, {
-        timeoutMs: 50,
-    });
+    const newPlayingTime = createThrottled(seekRequest, 50);
     const audioURL = createMemo<string | undefined>((prev) => {
         if (prev) {
             URL.revokeObjectURL(prev);
