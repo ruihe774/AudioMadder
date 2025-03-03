@@ -107,7 +107,7 @@ function generateIndices(logBase: number, length: number): number[] | undefined 
     const indices: number[] = [];
     const ymax = length - 1;
     for (let i = 0; i < length; ++i) {
-        indices.push(round((log(((logBase - 1) * i) / ymax + 1) * ymax) / log(logBase)));
+        indices.push(round((log((i * (logBase - 1)) / ymax + 1) / log(logBase)) * ymax));
     }
     return indices;
 }
@@ -345,6 +345,7 @@ const SpectrumVisualizer: Component<{
                         }
                         minFreq={0}
                         maxFreq={audioBuffer()!.sampleRate / 2}
+                        logBase={props.logBase}
                         duration={audioBuffer()!.duration}
                         horizontalScale={horizontalScale()}
                         onHorizontalScaleChanged={setHorizontalScale}

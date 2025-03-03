@@ -2,13 +2,14 @@ import type { Component } from "solid-js";
 import { createMemo, Index } from "solid-js";
 import { nextPowerOfTwo } from "./utils.ts";
 
-const { floor, ceil } = Math;
+const { floor, ceil, pow } = Math;
 
 const ChannelAxisY: Component<{
     width: number;
     height: number;
     minFreq: number;
     maxFreq: number;
+    logBase: number;
     padding?: [left: number, top: number, right: number, bottom: number];
 }> = (props) => {
     const rightEdge = (): number => props.width - (props.padding?.[2] ?? 0);
@@ -30,9 +31,14 @@ const ChannelAxisY: Component<{
         <svg width={props.width} height={props.height}>
             <Index each={scales()}>
                 {(scale) => {
-                    const y = (): number =>
-                        ((props.maxFreq - scale() * 1000) * innerHeight()) / (props.maxFreq - props.minFreq) +
-                        (props.padding?.[1] ?? 0);
+                    const y = (): number => {
+                        const { minFreq, maxFreq, padding, logBase } = props;
+                        const exp = (maxFreq - scale() * 1000) / (maxFreq - minFreq);
+                        return (
+                            (logBase == 1 ? exp : (pow(logBase, exp) - 1) / (logBase - 1)) * innerHeight() +
+                            (padding?.[1] ?? 0)
+                        );
+                    };
                     return (
                         <>
                             <line x1={rightEdge() - 5} x2={rightEdge()} y1={y()} y2={y()} stroke="white" />

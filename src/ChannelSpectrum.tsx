@@ -21,6 +21,7 @@ const ChannelSpectrum: Component<{
     targetHeight: number;
     minFreq: number;
     maxFreq: number;
+    logBase: number;
     duration: number;
     horizontalScale?: number;
     onHorizontalScaleChanged?: (newScale: number) => void;
@@ -126,9 +127,10 @@ const ChannelSpectrum: Component<{
             <ChannelAxisY
                 width={axisYWidth}
                 height={props.targetHeight}
-                padding={[0, topPadding, 0, axisXHeight]}
                 minFreq={props.minFreq}
                 maxFreq={props.maxFreq}
+                logBase={props.logBase}
+                padding={[0, topPadding, 0, axisXHeight]}
             />
             <div
                 ref={canvasContainer}
