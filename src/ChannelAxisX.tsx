@@ -1,6 +1,6 @@
 import type { Component } from "solid-js";
 import { createMemo, Index } from "solid-js";
-import { nextPowerOfTwo } from "./utils.ts";
+import { extractProps, nextPowerOfTwo } from "./utils.ts";
 
 const { floor } = Math;
 
@@ -9,15 +9,17 @@ const ChannelAxisX: Component<{
     height: number;
     duration: number;
 }> = (props) => {
+    const { width, height, duration } = extractProps(props);
+
     const scales = createMemo(() => {
-        const { duration: max, width } = props;
+        const max = duration();
         const scales = [];
-        let step = nextPowerOfTwo((max * 5) / width) * 15;
+        let step = nextPowerOfTwo((max * 5) / width()) * 15;
         if (step == 15) {
-            if ((width / max) * 10 > 45) {
+            if ((width() / max) * 10 > 45) {
                 step = 10;
             }
-            if ((width / max) * 5 > 45) {
+            if ((width() / max) * 5 > 45) {
                 step = 5;
             }
         }
@@ -28,10 +30,10 @@ const ChannelAxisX: Component<{
     });
 
     return (
-        <svg width={props.width} height={props.height}>
+        <svg width={width()} height={height()}>
             <Index each={scales()}>
                 {(scale) => {
-                    const x = (): number => (scale() * props.width) / props.duration;
+                    const x = (): number => (scale() * width()) / duration();
                     return (
                         <>
                             <line x1={x()} x2={x()} y1="0" y2="5" stroke="white" />

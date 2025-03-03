@@ -1,6 +1,6 @@
 import type { Component } from "solid-js";
 import { createMemo, Index } from "solid-js";
-import { nextPowerOfTwo } from "./utils.ts";
+import { extractProps, nextPowerOfTwo } from "./utils.ts";
 
 const { floor, ceil, pow } = Math;
 
@@ -12,14 +12,17 @@ const ChannelAxisY: Component<{
     logBase: number;
     padding?: [left: number, top: number, right: number, bottom: number];
 }> = (props) => {
-    const rightEdge = (): number => props.width - (props.padding?.[2] ?? 0);
-    const innerHeight = (): number => props.height - (props.padding?.[1] ?? 0) - (props.padding?.[3] ?? 0);
+    const { width, height, minFreq, maxFreq, logBase, padding } = extractProps(props, {
+        padding: [0, 0, 0, 0],
+    });
+
+    const rightEdge = (): number => width() - (padding()[2] ?? 0);
+    const innerHeight = (): number => height() - (padding()[1] ?? 0) - (padding()[3] ?? 0);
 
     const scales = createMemo(() => {
-        const { minFreq, maxFreq } = props;
         const scales = [];
-        const min = ceil(minFreq / 1000);
-        const max = floor(maxFreq / 1000);
+        const min = ceil(minFreq() / 1000);
+        const max = floor(maxFreq() / 1000);
         const step = nextPowerOfTwo(((max - min) * 30) / innerHeight());
         for (let i = min; i <= max; i += step) {
             scales.push(i);
@@ -28,15 +31,14 @@ const ChannelAxisY: Component<{
     });
 
     return (
-        <svg width={props.width} height={props.height}>
+        <svg width={width()} height={height()}>
             <Index each={scales()}>
                 {(scale) => {
                     const y = (): number => {
-                        const { minFreq, maxFreq, padding, logBase } = props;
-                        const exp = (maxFreq - scale() * 1000) / (maxFreq - minFreq);
+                        const exp = (maxFreq() - scale() * 1000) / (maxFreq() - minFreq());
                         return (
-                            (logBase == 1 ? exp : (pow(logBase, exp) - 1) / (logBase - 1)) * innerHeight() +
-                            (padding?.[1] ?? 0)
+                            (logBase() == 1 ? exp : (pow(logBase(), exp) - 1) / (logBase() - 1)) * innerHeight() +
+                            (padding()[1] ?? 0)
                         );
                     };
                     return (

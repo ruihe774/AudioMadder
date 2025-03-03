@@ -1,7 +1,7 @@
 import type { Component, Signal } from "solid-js";
 import { createSignal, Index, onCleanup, onMount, createEffect, untrack, createSelector } from "solid-js";
 import ChannelSpectrum from "./ChannelSpectrum";
-import { createDerived, createTrigger, createSafeResource } from "./utils";
+import { createDerived, createTrigger, createSafeResource, extractProps } from "./utils";
 import styles from "./styles.module.css";
 
 const { PI, sin, round, ceil, log } = Math;
@@ -114,29 +114,37 @@ function generateIndices(logBase: number, length: number): number[] | undefined 
 
 const SpectrumVisualizer: Component<{
     blob?: Blob;
-    fftSize: number;
-    logBase: number;
-    palette: SpectrumVisualizerPalette;
+    fftPower?: number;
+    logBase?: number;
+    palette?: SpectrumVisualizerPalette;
     currentPlayingTime?: number;
     onStateChanged?: (state: SpectrumVisualizerState) => void;
     onSeekRequest?: (time: number) => void;
 }> = (props) => {
-    const [audioBuffer] = createSafeResource(
-        () => props.blob,
-        (blob) =>
-            new Promise<ArrayBuffer>((resolve, reject) => {
-                const reader = new FileReader();
-                reader.readAsArrayBuffer(blob);
-                reader.onload = () => {
-                    resolve(reader.result as ArrayBuffer);
-                };
-                reader.onerror = () => {
-                    reject(reader.error!);
-                };
-            }).then((arrayBuffer) => {
-                const audioContext = new AudioContext();
-                return audioContext.decodeAudioData(arrayBuffer);
-            }),
+    const { blob, fftPower, logBase, palette, currentPlayingTime, onStateChanged, onSeekRequest } = extractProps(
+        props,
+        {
+            fftPower: defaultFFTPower,
+            logBase: defaultLogBase,
+            palette: defaultPalette,
+        },
+    );
+    const fftSize = (): number => 1 << fftPower();
+
+    const [audioBuffer] = createSafeResource(blob, (blob) =>
+        new Promise<ArrayBuffer>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.readAsArrayBuffer(blob);
+            reader.onload = () => {
+                resolve(reader.result as ArrayBuffer);
+            };
+            reader.onerror = () => {
+                reject(reader.error!);
+            };
+        }).then((arrayBuffer) => {
+            const audioContext = new AudioContext();
+            return audioContext.decodeAudioData(arrayBuffer);
+        }),
     );
 
     const canvasRefs = createDerived([() => audioBuffer()?.numberOfChannels], (numberOfChannels) => {
@@ -148,7 +156,6 @@ const SpectrumVisualizer: Component<{
     });
 
     const audioSystem = createDerived([audioBuffer], (audioBuffer) => {
-        const { fftSize, palette, logBase } = props;
         const audioContext = new OfflineAudioContext(
             audioBuffer.numberOfChannels,
             audioBuffer.length,
@@ -163,7 +170,7 @@ const SpectrumVisualizer: Component<{
         const analysers: AnalyserNode[] = [];
         for (let i = 0; i < audioBuffer.numberOfChannels; ++i) {
             const analyser = audioContext.createAnalyser();
-            analyser.fftSize = fftSize;
+            analyser.fftSize = fftSize();
             analyser.smoothingTimeConstant = 0;
             analyser.minDecibels = -120;
             analyser.maxDecibels = 0;
@@ -171,7 +178,7 @@ const SpectrumVisualizer: Component<{
             analyser.connect(channelMerger, 0, i);
             analysers.push(analyser);
         }
-        const scriptProcessor = audioContext.createScriptProcessor(fftSize, 1, 1);
+        const scriptProcessor = audioContext.createScriptProcessor(fftSize(), 1, 1);
         channelMerger.connect(scriptProcessor);
         scriptProcessor.connect(audioContext.destination);
         return {
@@ -181,8 +188,8 @@ const SpectrumVisualizer: Component<{
             analysers,
             channelMerger,
             scriptProcessor,
-            palette: palettes[palette](),
-            indices: generateIndices(logBase, analysers[0].frequencyBinCount),
+            palette: palettes[palette()](),
+            indices: generateIndices(logBase(), analysers[0].frequencyBinCount),
         };
     });
 
@@ -192,7 +199,7 @@ const SpectrumVisualizer: Component<{
             return canvasRefs.map(([_, ref], i) => {
                 return {
                     ref,
-                    width: ceil(audioBuffer.length / props.fftSize),
+                    width: ceil(audioBuffer.length / fftSize()),
                     height: audioSystem.analysers[i].frequencyBinCount,
                 };
             });
@@ -296,7 +303,7 @@ const SpectrumVisualizer: Component<{
     });
 
     createEffect(() => {
-        const setState = untrack(() => props.onStateChanged ?? (() => void 0));
+        const setState = untrack(() => onStateChanged() ?? (() => void 0));
         switch (audioBuffer.state) {
             case "unresolved":
                 resetAnalysing();
@@ -317,7 +324,7 @@ const SpectrumVisualizer: Component<{
                 } else if (typeof p == "number") {
                     const buf = audioBuffer();
                     if (buf) {
-                        setState({ type: "analysing", progress: (p * props.fftSize) / buf.length });
+                        setState({ type: "analysing", progress: (p * fftSize()) / buf.length });
                     }
                 } else {
                     setState({ type: "errored", error: p });
@@ -347,7 +354,7 @@ const SpectrumVisualizer: Component<{
                         }
                         minFreq={0}
                         maxFreq={audioBuffer()!.sampleRate / 2}
-                        logBase={props.logBase}
+                        logBase={logBase()}
                         duration={audioBuffer()!.duration}
                         horizontalScale={horizontalScale()}
                         onHorizontalScaleChanged={setHorizontalScale}
@@ -361,8 +368,8 @@ const SpectrumVisualizer: Component<{
                         }}
                         horizontalScroll={horizontalScroll()}
                         onHorizontalScrollChanged={setHorizontalScroll}
-                        currentPlayingTime={props.currentPlayingTime}
-                        onSeekRequest={props.onSeekRequest}
+                        currentPlayingTime={currentPlayingTime()}
+                        onSeekRequest={onSeekRequest()}
                         playingHeadColor={((palette) => {
                             switch (palette) {
                                 case "sox":
@@ -372,7 +379,7 @@ const SpectrumVisualizer: Component<{
                                 case "spectrum":
                                     return "red";
                             }
-                        })(props.palette)}
+                        })(palette())}
                     />
                 )}
             </Index>
@@ -403,3 +410,7 @@ export type SpectrumVisualizerState =
       };
 
 export type SpectrumVisualizerPalette = "spectrum" | "sox" | "mono";
+
+export const defaultFFTPower = 12;
+export const defaultLogBase = 1;
+export const defaultPalette = "sox";

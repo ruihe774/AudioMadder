@@ -1,13 +1,10 @@
 import { createEffect, createMemo } from "solid-js";
 import type { JSXElement } from "solid-js";
 import { createSignal, Switch, Match, batch, createDeferred } from "solid-js";
+import { defaultFFTPower, defaultLogBase, defaultPalette } from "./SpectrumVisualizer";
 import type { SpectrumVisualizerPalette, SpectrumVisualizerState } from "./SpectrumVisualizer";
 import SpectrumVisualizer from "./SpectrumVisualizer";
 import styles from "./styles.module.css";
-
-const defaultFFTPower = 12;
-const defaultLogBase = 1;
-const defaultPalette = "sox";
 
 const App = (): JSXElement => {
     let fileInput!: HTMLInputElement;
@@ -160,7 +157,7 @@ const App = (): JSXElement => {
             </div>
             <SpectrumVisualizer
                 blob={audioFile()}
-                fftSize={1 << fftPower()}
+                fftPower={fftPower()}
                 logBase={logBase()}
                 palette={palette()}
                 currentPlayingTime={playing() ? currentPlayingTime() : void 0}

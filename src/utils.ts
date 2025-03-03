@@ -1,4 +1,4 @@
-import type { Accessor, ResourceActions, ResourceFetcher, ResourceOptions, ResourceSource } from "solid-js";
+import type { Accessor, ResourceActions, ResourceFetcher, ResourceOptions } from "solid-js";
 import { createMemo, createEffect, createResource } from "solid-js";
 
 function createHelper<T extends any[], R>(
@@ -62,18 +62,19 @@ interface Errored {
     (): undefined;
 }
 
+export type SafeResourceSource<S> = S | (() => S | undefined);
 export type SafeResource<T> = Unresolved | Pending | Ready<T> | Refreshing<T> | Errored;
 export type SafeResourceReturn<T, R = unknown> = [SafeResource<T>, ResourceActions<T | undefined, R>];
 
 export function createSafeResource<T, S, R = unknown>(
-    source: ResourceSource<S>,
+    source: SafeResourceSource<S>,
     fetcher: ResourceFetcher<S, T, R>,
     options?: ResourceOptions<NoInfer<T>, S>,
 ): SafeResourceReturn<T, R> {
     const [read, action] = createResource(source, fetcher, options);
 
     const isSourceVoid = (): boolean =>
-        source == void 0 || (typeof source == "function" && (source as () => false | S | null | undefined)() == void 0);
+        source === void 0 || (typeof source == "function" && (source as () => S | undefined)() === void 0);
 
     const safeRead = createMemo((): T | undefined => (!isSourceVoid() && read.state != "errored" ? read() : void 0));
 
@@ -93,6 +94,30 @@ export function createSafeResource<T, S, R = unknown>(
     });
 
     return [safeRead as SafeResource<T>, action];
+}
+
+export function extractProps<P, D extends { [K in keyof D]: K extends keyof P ? Exclude<P[K], undefined> : never }>(
+    props: P,
+    defaults?: D,
+): {
+    readonly [K in keyof P]-?: K extends keyof D ? () => Exclude<P[K], undefined> : () => P[K];
+} {
+    // @ts-expect-error proxy
+    return new Proxy(
+        {},
+        {
+            get: (_, name) => () => {
+                // @ts-expect-error any
+                // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+                const prop = props[name];
+                if (prop === void 0) {
+                    // @ts-expect-error any
+                    return defaults?.[name];
+                }
+                return prop;
+            },
+        },
+    );
 }
 
 export function clamp(x: number, low: number, high: number): number {
