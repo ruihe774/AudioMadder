@@ -1,5 +1,5 @@
 import type { JSXElement } from "solid-js";
-import { createEffect, createMemo, createSignal, Switch, Match, batch, createDeferred } from "solid-js";
+import { createEffect, createMemo, createSignal, Switch, Match, batch } from "solid-js";
 import { defaultFFTPower, defaultLogBase, defaultPalette } from "./SpectrumVisualizer";
 import type { SpectrumVisualizerPalette, SpectrumVisualizerState } from "./SpectrumVisualizer";
 import SpectrumVisualizer from "./SpectrumVisualizer";
@@ -14,11 +14,8 @@ const App = (): JSXElement => {
     let audioPlayer!: HTMLAudioElement;
     const [audioFile, setAudioFile] = createSignal<File>();
     const [fftPower, setFFTPower] = createSignal(defaultFFTPower);
-    const deferredFFTPower = createDeferred(fftPower);
     const [logBase, setLogBase] = createSignal(defaultLogBase);
-    const deferredLogBase = createDeferred(logBase);
     const [palette, setPalette] = createSignal<SpectrumVisualizerPalette>(defaultPalette);
-    const deferredPalette = createDeferred(palette);
     const [state, setState] = createSignal<SpectrumVisualizerState>();
     const [invalid, setInvalid] = createSignal(true);
     const invalidate = () => void setInvalid(true);
@@ -72,7 +69,9 @@ const App = (): JSXElement => {
                         setInvalid(false);
                     });
                 }}
-                on:reset={() => {
+                on:reset={(e) => {
+                    e.preventDefault();
+                    fileInput.value = "";
                     batch(() => {
                         setAudioFile(void 0);
                         setFFTPower(defaultFFTPower);
@@ -90,7 +89,7 @@ const App = (): JSXElement => {
                         min="10"
                         max="14"
                         step="1"
-                        value={deferredFFTPower()}
+                        value={fftPower()}
                         required
                         ref={fftSizeInput}
                         on:change={invalidate}
@@ -103,7 +102,7 @@ const App = (): JSXElement => {
                         min="1"
                         max="100"
                         step="1"
-                        value={deferredLogBase()}
+                        value={logBase()}
                         required
                         ref={logBaseInput}
                         on:change={invalidate}
@@ -111,7 +110,7 @@ const App = (): JSXElement => {
                 </label>
                 <label>
                     {"Palette: "}
-                    <select ref={paletteInput} value={deferredPalette()} required on:change={invalidate}>
+                    <select ref={paletteInput} value={palette()} required on:change={invalidate}>
                         <option value="sox">SoX</option>
                         <option value="mono">Monochrome</option>
                         <option value="spectrum">Spectrum</option>
