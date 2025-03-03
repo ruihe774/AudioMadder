@@ -6,16 +6,20 @@ import SpectrumVisualizer from "./SpectrumVisualizer";
 import styles from "./styles.module.css";
 
 const defaultFFTPower = 12;
+const defaultLogBase = 1;
 const defaultPalette = "sox";
 
 const App = (): JSXElement => {
     let fileInput!: HTMLInputElement;
     let fftSizeInput!: HTMLInputElement;
+    let logBaseInput!: HTMLInputElement;
     let paletteInput!: HTMLSelectElement;
     let audioPlayer!: HTMLAudioElement;
     const [audioFile, setAudioFile] = createSignal<File>();
     const [fftPower, setFFTPower] = createSignal(defaultFFTPower);
     const deferredFFTPower = createDeferred(fftPower);
+    const [logBase, setLogBase] = createSignal(defaultLogBase);
+    const deferredLogBase = createDeferred(logBase);
     const [palette, setPalette] = createSignal<SpectrumVisualizerPalette>(defaultPalette);
     const deferredPalette = createDeferred(palette);
     const [state, setState] = createSignal<SpectrumVisualizerState>();
@@ -60,6 +64,7 @@ const App = (): JSXElement => {
                     batch(() => {
                         setAudioFile(fileInput.files![0]);
                         setFFTPower(Number(fftSizeInput.value));
+                        setLogBase(Number(logBaseInput.value));
                         setPalette(paletteInput.value as SpectrumVisualizerPalette);
                         setInvalid(false);
                     });
@@ -68,6 +73,7 @@ const App = (): JSXElement => {
                     batch(() => {
                         setAudioFile(void 0);
                         setFFTPower(defaultFFTPower);
+                        setLogBase(defaultLogBase);
                         setPalette(defaultPalette);
                         setInvalid(true);
                     });
@@ -84,6 +90,19 @@ const App = (): JSXElement => {
                         value={deferredFFTPower()}
                         required
                         ref={fftSizeInput}
+                        on:change={invalidate}
+                    />
+                </label>
+                <label>
+                    {"Log base: "}
+                    <input
+                        type="number"
+                        min="1"
+                        max="10"
+                        step="1"
+                        value={deferredLogBase()}
+                        required
+                        ref={logBaseInput}
                         on:change={invalidate}
                     />
                 </label>
@@ -142,6 +161,7 @@ const App = (): JSXElement => {
             <SpectrumVisualizer
                 blob={audioFile()}
                 fftSize={1 << fftPower()}
+                logBase={logBase()}
                 palette={palette()}
                 currentPlayingTime={playing() ? currentPlayingTime() : void 0}
                 onStateChanged={setState}
