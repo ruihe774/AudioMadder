@@ -122,7 +122,7 @@ const ChannelSpectrum: Component<{
     });
 
     return (
-        <div class={styles["channel-plot"]}>
+        <div class={styles["channel-plot"]} style={props.hide ? { display: "none" } : {}}>
             <ChannelAxisY
                 width={axisYWidth}
                 height={props.targetHeight}
@@ -228,7 +228,6 @@ const ChannelSpectrum: Component<{
                         playingHeadDragging = false;
                     }
                 }}
-                style={props.hide ? { display: "none" } : {}}
                 // @ts-expect-error webkit proprietary
                 on:webkitmouseforcewillbegin={(e: MouseEvent) => e.preventDefault()}
                 on:webkitmouseforcedown={(e: MouseEvent & { currentTarget: HTMLElement }) => {
