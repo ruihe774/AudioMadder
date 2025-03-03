@@ -16,8 +16,15 @@
     }
 }
 
-.prompt-line {
+.status-bar {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
     margin: 0 0.5em;
+
+    audio {
+        height: 2em;
+    }
 }
 
 .visualizing-stage {
@@ -33,13 +40,24 @@
     grid-template-columns: 60px 1fr;
 }
 
+.channel-canvas {
+    margin-top: 10px;
+}
+
 .channel-canvas-container {
     overflow-x: overlay;
     overscroll-behavior: none;
-    padding-top: 10px;
 }
 
 .channel-canvas-scrollable {
     display: flex;
     flex-direction: column;
+    position: relative;
+}
+
+.playing-head-absolute-container {
+    position: absolute;
+    left: 0;
+    top: 5px;
+    cursor: ew-resize;
 }

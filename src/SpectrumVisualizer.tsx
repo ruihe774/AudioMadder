@@ -104,7 +104,9 @@ const SpectrumVisualizer: Component<{
     blob?: Blob;
     fftSize: number;
     palette: SpectrumVisualizerPalette;
+    currentPlayingTime?: number;
     onStateChanged?: (state: SpectrumVisualizerState) => void;
+    onSeekRequest?: (time: number) => void;
 }> = (props) => {
     const [audioBuffer] = createSafeResource(extract(props, "blob"), (blob) =>
         new Promise<ArrayBuffer>((resolve, reject) => {
@@ -327,7 +329,7 @@ const SpectrumVisualizer: Component<{
                         horizontalScale={horizontalScale()}
                         onHorizontalScaleChanged={setHorizontalScale}
                         hide={zoomedChannel() != null && !isZoomedChannel(index)}
-                        onToggleZoom={() => {
+                        onToggleZoomRequest={() => {
                             if (isZoomedChannel(index)) {
                                 setZoomedChannel(void 0);
                             } else {
@@ -336,6 +338,18 @@ const SpectrumVisualizer: Component<{
                         }}
                         horizontalScroll={horizontalScroll()}
                         onHorizontalScrollChanged={setHorizontalScroll}
+                        currentPlayingTime={props.currentPlayingTime}
+                        onSeekRequest={props.onSeekRequest}
+                        playingHeadColor={((palette) => {
+                            switch (palette) {
+                                case "sox":
+                                    return "green";
+                                case "mono":
+                                    return "white";
+                                case "spectrum":
+                                    return "red";
+                            }
+                        })(props.palette)}
                     />
                 )}
             </Index>

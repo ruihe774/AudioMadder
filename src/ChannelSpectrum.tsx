@@ -1,8 +1,10 @@
 import type { Component } from "solid-js";
+import { Show } from "solid-js";
 import { batch, createEffect, createSignal } from "solid-js";
 import { clamp, createTrigger, extract } from "./utils";
 import ChannelAxisY from "./ChannelAxisY.tsx";
 import ChannelAxisX from "./ChannelAxisX.tsx";
+import PlayingHead from "./PlayingHead.tsx";
 import styles from "./styles.module.css";
 
 const { pow } = Math;
@@ -23,12 +25,16 @@ const ChannelSpectrum: Component<{
     horizontalScale?: number;
     onHorizontalScaleChanged?: (newScale: number) => void;
     hide?: boolean;
-    onToggleZoom?: () => void;
+    onToggleZoomRequest?: () => void;
     horizontalScroll?: number;
     onHorizontalScrollChanged?: (newScroll: number) => void;
+    currentPlayingTime?: number;
+    onSeekRequest?: (time: number) => void;
+    playingHeadColor?: string;
 }> = (props) => {
     let canvas!: HTMLCanvasElement;
     let canvasContainer!: HTMLDivElement;
+    let playingHeadContainer!: HTMLDivElement;
 
     const [scrolling, setScrolling] = createSignal(false);
 
@@ -89,6 +95,32 @@ const ChannelSpectrum: Component<{
     // workaround for Safari which does not support scrollend
     let scrollStopAction: number | undefined;
 
+    const playingHeadWidth = 10;
+    let lastPlayingTimeUpdate = 0;
+    let playingHeadTransitionTime = 0;
+    let playingHeadTransitionAnimation: Animation | undefined;
+    let playingHeadDragging = false;
+    createTrigger([extract(props, "currentPlayingTime")], (currentPlayingTime) => {
+        const currentTime = performance.now();
+        const newTransitionTime = currentTime - lastPlayingTimeUpdate;
+        if (newTransitionTime < 300) {
+            playingHeadTransitionTime = newTransitionTime;
+        }
+        lastPlayingTimeUpdate = currentTime;
+
+        playingHeadTransitionAnimation?.cancel();
+        const generateTransform = (currentPlayingTime: number): string =>
+            `translateX(${(currentPlayingTime / props.duration) * canvasTargetWidth() - playingHeadWidth / 2}px)`;
+        const currentTransform = (playingHeadContainer.style.transform = generateTransform(currentPlayingTime));
+        playingHeadTransitionAnimation = playingHeadContainer.animate(
+            [
+                { transform: currentTransform },
+                { transform: generateTransform(currentPlayingTime + playingHeadTransitionTime / 1000) },
+            ],
+            playingHeadTransitionTime,
+        );
+    });
+
     return (
         <div class={styles["channel-plot"]}>
             <ChannelAxisY
@@ -102,7 +134,7 @@ const ChannelSpectrum: Component<{
                 ref={canvasContainer}
                 class={styles["channel-canvas-container"]}
                 on:dblclick={(e) => {
-                    const { onToggleZoom: toggleZoom } = props;
+                    const { onToggleZoomRequest: toggleZoom } = props;
                     if (toggleZoom) {
                         e.preventDefault();
                         toggleZoom();
@@ -151,22 +183,37 @@ const ChannelSpectrum: Component<{
                 }}
                 on:scrollend={() => void setScrolling(false)}
                 on:mousemove={(e) => {
-                    const { horizontalScale, horizontalScroll, onHorizontalScrollChanged: setHorizontalScroll } = props;
-                    const canvasWidth = unscaledCanvasWidth();
-                    if (
-                        horizontalScale &&
-                        horizontalScroll != null &&
-                        setHorizontalScroll &&
-                        e.buttons == 1 &&
-                        !isModifierPreventing(e)
-                    ) {
-                        setHorizontalScroll(
-                            clamp(
-                                horizontalScroll - e.movementX / devicePixelRatio,
-                                0,
-                                canvasWidth * (horizontalScale - 1),
-                            ),
-                        );
+                    if (playingHeadDragging) {
+                        const { currentPlayingTime, duration, onSeekRequest: setCurrentPlayingTime } = props;
+                        if (currentPlayingTime != null && setCurrentPlayingTime) {
+                            setCurrentPlayingTime(
+                                ((e.x - e.currentTarget.getBoundingClientRect().left + (props.horizontalScroll ?? 0)) /
+                                    canvasTargetWidth()) *
+                                    duration,
+                            );
+                        }
+                    } else {
+                        const {
+                            horizontalScale,
+                            horizontalScroll,
+                            onHorizontalScrollChanged: setHorizontalScroll,
+                        } = props;
+                        const canvasWidth = unscaledCanvasWidth();
+                        if (
+                            horizontalScale &&
+                            horizontalScroll != null &&
+                            setHorizontalScroll &&
+                            e.buttons == 1 &&
+                            !isModifierPreventing(e)
+                        ) {
+                            setHorizontalScroll(
+                                clamp(
+                                    horizontalScroll - e.movementX / devicePixelRatio,
+                                    0,
+                                    canvasWidth * (horizontalScale - 1),
+                                ),
+                            );
+                        }
                     }
                 }}
                 on:mousedown={(e) => {
@@ -174,6 +221,11 @@ const ChannelSpectrum: Component<{
                     const canvasWidth = unscaledCanvasWidth();
                     if (e.button == 1 && !isModifierPreventing(e)) {
                         scalePixelToPixel(e, pixelWidth, canvasWidth);
+                    }
+                }}
+                on:mouseup={(e) => {
+                    if (e.button == 0) {
+                        playingHeadDragging = false;
                     }
                 }}
                 style={props.hide ? { display: "none" } : {}}
@@ -188,12 +240,31 @@ const ChannelSpectrum: Component<{
                 <div class={styles["channel-canvas-scrollable"]}>
                     <canvas
                         ref={canvas}
+                        class={styles["channel-canvas"]}
                         style={{
                             width: `${canvasTargetWidth()}px`,
                             height: `${canvasTargetHeight()}px`,
                         }}
                     />
                     <ChannelAxisX width={canvasTargetWidth()} height={axisXHeight} duration={props.duration} />
+                    <Show when={props.currentPlayingTime != null}>
+                        <div
+                            ref={playingHeadContainer}
+                            class={styles["playing-head-absolute-container"]}
+                            on:mousedown={(e) => {
+                                if (e.button == 0 && !isModifierPreventing(e)) {
+                                    e.preventDefault();
+                                    playingHeadDragging = true;
+                                }
+                            }}
+                        >
+                            <PlayingHead
+                                width={playingHeadWidth}
+                                height={canvasTargetHeight() + 5}
+                                color={props.playingHeadColor ?? "white"}
+                            />
+                        </div>
+                    </Show>
                 </div>
             </div>
         </div>
