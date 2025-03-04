@@ -1,5 +1,5 @@
 import type { Accessor } from "solid-js";
-import { createMemo, createEffect, untrack, createSignal, onCleanup } from "solid-js";
+import { createMemo, createEffect, untrack, createSignal, onCleanup, batch } from "solid-js";
 import { throttle } from "@solid-primitives/scheduled";
 
 function createHelper<T extends any[], R>(
@@ -72,75 +72,64 @@ export function createAsync<T extends any[], R>(
     const abort = (reason?: any): void => abortController?.abort(reason);
     onCleanup(abort);
     const getPromise = createHelper(deps, (...args) => fn((abortController = new AbortController()).signal, ...args));
-    type AsyncStore = Omit<AsyncSignal<R>, "()">;
-    const unresolvedValue: AsyncStore = {
-        state: "unresolved",
-        loading: false,
-        error: void 0,
-        latest: void 0,
-    };
-    const [asyncSignal, setAsyncSignal] = createSignal<AsyncStore>(unresolvedValue);
+    const [state, setState] = createSignal<AsyncSignal<R>["state"]>("unresolved");
+    const [loading, setLoading] = createSignal<AsyncSignal<R>["loading"]>(false);
+    const [error, setError] = createSignal<AsyncSignal<R>["error"]>(void 0);
+    const [latest, setLatest] = createSignal<AsyncSignal<R>["latest"]>(void 0);
     let currentPromise: Promise<void> | undefined;
     createEffect(() => {
         abort();
         const promise = getPromise();
         if (promise === void 0) {
-            setAsyncSignal(unresolvedValue);
+            batch(() => {
+                setState("unresolved");
+                setLoading(false);
+                setError(void 0);
+                setLatest(void 0);
+            });
             currentPromise = void 0;
         } else {
-            const lastState = untrack(asyncSignal);
-            setAsyncSignal(
-                lastState.state == "ready" || lastState.state == "refreshing"
-                    ? {
-                          state: "refreshing",
-                          loading: true,
-                          error: void 0,
-                          latest: lastState.latest,
-                      }
-                    : {
-                          state: "pending",
-                          loading: true,
-                          error: void 0,
-                          latest: void 0,
-                      },
-            );
+            batch(() => {
+                setState((prevState) => (prevState == "ready" || prevState == "refreshing" ? "refreshing" : "pending"));
+                setLoading(true);
+                setError(void 0);
+            });
             const thisPromise = (currentPromise = promise.then(
                 (value) => {
                     if (currentPromise === thisPromise)
-                        setAsyncSignal({
-                            state: "ready",
-                            loading: false,
-                            error: void 0,
-                            latest: value,
+                        batch(() => {
+                            setState("ready");
+                            setLoading(false);
+                            setError(void 0);
+                            setLatest(() => value);
                         });
                 },
                 (error) => {
                     if (currentPromise === thisPromise)
-                        setAsyncSignal({
-                            state: "errored",
-                            loading: false,
-                            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-                            error,
-                            latest: void 0,
+                        batch(() => {
+                            setState("errored");
+                            setLoading(false);
+                            setError(() => error);
+                            setLatest(void 0);
                         });
                 },
             ));
         }
     });
 
-    const read = createMemo(() => asyncSignal().latest);
+    const read = (): R | undefined => latest();
     Object.defineProperties(read, {
         state: {
-            get: createMemo(() => asyncSignal().state),
+            get: state,
         },
         error: {
-            get: createMemo(() => asyncSignal().error),
+            get: error,
         },
         loading: {
-            get: createMemo(() => asyncSignal().loading),
+            get: loading,
         },
         latest: {
-            get: read,
+            get: latest,
         },
     });
     return [read as AsyncSignal<R>, abort];
