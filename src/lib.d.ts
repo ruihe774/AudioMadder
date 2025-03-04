@@ -10,20 +10,25 @@ export declare const SpectrumVisualizer: Component<{
     width?: string | number;
     height?: string | number;
 }>;
-type SpectrumVisualizerState = {
-    type: "inited";
-} | {
-    type: "decoding";
-} | {
-    type: "analysing";
-    progress: number;
-} | {
-    type: "finished";
-    duration: number;
-} | {
-    type: "errored";
-    error: Error;
-};
+type SpectrumVisualizerState =
+    | {
+          type: "inited";
+      }
+    | {
+          type: "decoding";
+      }
+    | {
+          type: "analysing";
+          progress: number;
+      }
+    | {
+          type: "finished";
+          duration: number;
+      }
+    | {
+          type: "errored";
+          error: Error;
+      };
 type SpectrumVisualizerPalette = "spectrum" | "sox" | "mono";
 declare const defaultFFTPower = 12;
 declare const defaultLogBase = 1;

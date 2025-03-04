@@ -16,7 +16,7 @@ export default defineConfig({
                 {
                     src: "src/lib.d.ts",
                     dest: ".",
-                    rename: "audio-madder.d.ts"
+                    rename: "audio-madder.d.ts",
                 },
             ],
         }),
