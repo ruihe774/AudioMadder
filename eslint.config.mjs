@@ -3,6 +3,9 @@ import tseslint from "typescript-eslint";
 import prettierConfigs from "eslint-config-prettier";
 
 export default tseslint.config(
+    {
+        ignores: ["**/*.d.ts"],
+    },
     eslint.configs.recommended,
     tseslint.configs.recommendedTypeChecked,
     tseslint.configs.stylisticTypeChecked,
