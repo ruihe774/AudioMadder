@@ -3,3 +3,8 @@
 @utility overlay-scrollbar {
     scrollbar-width: none;
 }
+
+@theme {
+    --color-black: #000;
+    --color-white: #fff;
+}
