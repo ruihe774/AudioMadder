@@ -1,13 +1,19 @@
 @layer theme, base, components, utilities;
 @import "tailwindcss/theme.css" layer(theme);
 @import "tailwindcss/utilities.css" layer(utilities);
+@import "./utils.css";
 
 @utility font-system {
     @apply font-[system-ui];
 }
 
-@utility overlay-scrollbar {
-    scrollbar-width: none;
+@utility buttons-first {
+    input[type="submit"],
+    input[type="reset"],
+    input[type="button"],
+    button {
+        @apply order-first;
+    }
 }
 
 :root {
@@ -32,7 +38,7 @@ body {
 }
 
 input {
-    font-family: system-ui;
+    @apply font-system;
 }
 
 input[type="submit"],
@@ -40,4 +46,5 @@ input[type="reset"],
 input[type="button"],
 button {
     @apply box-border;
+    @apply min-w-16;
 }

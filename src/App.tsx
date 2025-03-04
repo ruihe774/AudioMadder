@@ -62,7 +62,7 @@ const App = (): JSXElement => {
     return (
         <div class="flex flex-col gap-2 pt-2">
             <form
-                class="flex flex-row items-start gap-2 mx-2"
+                class="flex flex-row items-baseline buttons-first gap-2 mx-2"
                 on:submit={(e) => {
                     e.preventDefault();
                     batch(() => {
@@ -123,19 +123,18 @@ const App = (): JSXElement => {
                 <input
                     type="button"
                     value="Play"
-                    class="order-first min-w-16"
                     disabled={invalid() || state()?.type != "finished"}
                     on:click={() => void setPlaying(true)}
                 />
                 <input
                     type="submit"
                     value="Open"
-                    class={cl`order-first min-w-16 ${audioFile() && !invalid()} hidden`}
+                    class={cl`${audioFile() && !invalid()} hidden`}
                 />
                 <input
                     type="reset"
                     value="Reset"
-                    class={cl`order-first min-w-16 ${!audioFile() || invalid()} hidden`}
+                    class={cl`${!audioFile() || invalid()} hidden`}
                 />
             </form>
             <div class="flex items-center mx-2">
