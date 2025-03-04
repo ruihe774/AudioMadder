@@ -12,6 +12,7 @@ export default defineConfig({
         tailwindcss(),
     ],
     build: {
+        target: ["chrome104", "firefox78", "safari14.1"],
         modulePreload: false,
     },
 });

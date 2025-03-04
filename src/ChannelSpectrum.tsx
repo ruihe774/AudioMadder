@@ -123,13 +123,13 @@ const ChannelSpectrum: Component<{
         lastPlayingTimeUpdate = currentTime;
 
         playingHeadTransitionAnimation?.cancel();
-        const generateTransform = (currentPlayingTime: number): string =>
-            `translateX(${(currentPlayingTime / duration()) * canvasTargetWidth() - playingHeadWidth / 2}px)`;
-        const currentTransform = (playingHeadContainer.style.transform = generateTransform(currentPlayingTime));
+        const generateTranslate = (currentPlayingTime: number): string =>
+            `${(currentPlayingTime / duration()) * canvasTargetWidth() - playingHeadWidth / 2}px 0`;
+        const currentTranslate = (playingHeadContainer.style.translate = generateTranslate(currentPlayingTime));
         playingHeadTransitionAnimation = playingHeadContainer.animate(
             [
-                { transform: currentTransform },
-                { transform: generateTransform(currentPlayingTime + playingHeadTransitionTime / 1000) },
+                { translate: currentTranslate },
+                { translate: generateTranslate(currentPlayingTime + playingHeadTransitionTime / 1000) },
             ],
             playingHeadTransitionTime,
         );

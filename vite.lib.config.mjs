@@ -22,6 +22,7 @@ export default defineConfig({
         }),
     ],
     build: {
+        target: "esnext",
         lib: {
             entry: "src/lib.ts",
             name: "AudioMadder",
