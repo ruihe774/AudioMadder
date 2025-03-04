@@ -135,6 +135,8 @@ const ChannelSpectrum: Component<{
         );
     });
 
+    let axisSelecting = false;
+
     return (
         <div class={cl`grid grid-cols-[60px_1fr] ${hide()} hidden`}>
             <ChannelAxisY
@@ -205,7 +207,7 @@ const ChannelSpectrum: Component<{
                                     duration(),
                             );
                         }
-                    } else {
+                    } else if (!axisSelecting) {
                         const setHorizontalScroll = onHorizontalScrollChanged();
                         const scale = horizontalScale();
                         const scroll = horizontalScroll();
@@ -223,13 +225,23 @@ const ChannelSpectrum: Component<{
                     }
                 }}
                 on:mousedown={(e) => {
-                    if (e.button == 1 && !isModifierPreventing(e)) {
-                        scalePixelToPixel(e, pixelWidth(), unscaledCanvasWidth());
+                    if (!isModifierPreventing(e)) {
+                        if (e.button == 0) {
+                            if (playingHeadContainer.contains(e.target)) {
+                                e.preventDefault();
+                                playingHeadDragging = true;
+                            } else if (e.target.tagName == "text") {
+                                axisSelecting = true;
+                            }
+                        } else if (e.button == 1) {
+                            scalePixelToPixel(e, pixelWidth(), unscaledCanvasWidth());
+                        }
                     }
                 }}
                 on:mouseup={(e) => {
                     if (e.button == 0) {
                         playingHeadDragging = false;
+                        axisSelecting = false;
                     }
                 }}
                 // @ts-expect-error webkit proprietary
@@ -252,12 +264,6 @@ const ChannelSpectrum: Component<{
                         <div
                             class="absolute left-0 top-[5px] cursor-ew-resize"
                             ref={playingHeadContainer}
-                            on:mousedown={(e) => {
-                                if (e.button == 0 && !isModifierPreventing(e)) {
-                                    e.preventDefault();
-                                    playingHeadDragging = true;
-                                }
-                            }}
                         >
                             <PlayingHead
                                 width={playingHeadWidth}
