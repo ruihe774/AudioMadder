@@ -1,5 +1,6 @@
-@import "tailwindcss/theme";
-@import "tailwindcss/utilities";
+@layer theme, base, components, utilities;
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities);
 
 @utility font-system {
     @apply font-[system-ui];
@@ -24,6 +25,10 @@ body {
     @apply grid;
     grid-template-rows: 100vh;
     grid-template-columns: 100vw;
+    @supports (width: 1dvh) {
+        grid-template-rows: 100dvh;
+        grid-template-columns: 100dvw;
+    }
 }
 
 input {
