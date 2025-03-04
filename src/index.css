@@ -1,16 +1,18 @@
+@import "tailwindcss/theme";
+@import "tailwindcss/utilities";
+
+@utility font-system {
+    @apply font-[system-ui];
+}
+
+@utility overlay-scrollbar {
+    scrollbar-width: none;
+}
+
 :root {
-    font-family: system-ui;
-    overscroll-behavior: none;
-}
-
-@media (prefers-color-scheme: dark) {
-    :root {
-        color-scheme: dark;
-    }
-}
-
-input {
-    font-family: system-ui;
+    @apply font-system;
+    @apply overscroll-none;
+    @apply dark:scheme-dark;
 }
 
 body {
@@ -19,11 +21,18 @@ body {
 }
 
 #root {
-    display: flex;
-    flex-direction: column;
-    width: 100vw;
-    height: 100vh;
-    gap: 0.5em;
-    box-sizing: border-box;
-    padding-top: 0.5em;
+    @apply grid;
+    grid-template-rows: 100vh;
+    grid-template-columns: 100vw;
+}
+
+input {
+    font-family: system-ui;
+}
+
+input[type="submit"],
+input[type="reset"],
+input[type="button"],
+button {
+    @apply box-border;
 }

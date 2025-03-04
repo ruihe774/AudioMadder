@@ -1,10 +1,9 @@
 import type { Component } from "solid-js";
 import { Show, batch, createEffect } from "solid-js";
-import { clamp, createTrigger, extractProps } from "./utils";
+import { cl, clamp, createTrigger, extractProps } from "./utils";
 import ChannelAxisY from "./ChannelAxisY.tsx";
 import ChannelAxisX from "./ChannelAxisX.tsx";
 import PlayingHead from "./PlayingHead.tsx";
-import styles from "./styles.module.css";
 
 const { pow } = Math;
 
@@ -137,7 +136,7 @@ const ChannelSpectrum: Component<{
     });
 
     return (
-        <div class={styles["channel-plot"]} style={hide() ? { display: "none" } : {}}>
+        <div class={cl`grid grid-cols-[60px_1fr] ${hide()} hidden`}>
             <ChannelAxisY
                 width={axisYWidth}
                 height={targetHeight()}
@@ -147,8 +146,8 @@ const ChannelSpectrum: Component<{
                 padding={[0, topPadding, 0, axisXHeight]}
             />
             <div
+                class="overflow-x-auto overscroll-none overlay-scrollbar"
                 ref={canvasContainer}
-                class={styles["channel-canvas-container"]}
                 on:dblclick={(e) => {
                     const toggleZoom = onToggleZoomRequest();
                     if (toggleZoom) {
@@ -239,10 +238,10 @@ const ChannelSpectrum: Component<{
                     scalePixelToPixel(e, pixelWidth(), unscaledCanvasWidth());
                 }}
             >
-                <div class={styles["channel-canvas-scrollable"]}>
+                <div class="flex flex-col relative">
                     <canvas
+                        class="mt-[10px]"
                         ref={canvas}
-                        class={styles["channel-canvas"]}
                         style={{
                             width: `${canvasTargetWidth()}px`,
                             height: `${canvasTargetHeight()}px`,
@@ -251,8 +250,8 @@ const ChannelSpectrum: Component<{
                     <ChannelAxisX width={canvasTargetWidth()} height={axisXHeight} duration={duration()} />
                     <Show when={currentPlayingTime() != null}>
                         <div
+                            class="absolute left-0 top-[5px] cursor-ew-resize"
                             ref={playingHeadContainer}
-                            class={styles["playing-head-absolute-container"]}
                             on:mousedown={(e) => {
                                 if (e.button == 0 && !isModifierPreventing(e)) {
                                     e.preventDefault();

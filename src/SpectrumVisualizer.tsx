@@ -3,7 +3,6 @@ import { createSignal, Index, createEffect, untrack, createSelector } from "soli
 import { createElementSize } from "@solid-primitives/resize-observer";
 import ChannelSpectrum from "./ChannelSpectrum";
 import { createDerived, createAsync, extractProps } from "./utils";
-import styles from "./styles.module.css";
 
 const { PI, sin, round, ceil, log } = Math;
 
@@ -322,7 +321,7 @@ const SpectrumVisualizer: Component<{
     const [horizontalScroll, setHorizontalScroll] = createSignal<number>(0);
 
     return (
-        <div class={styles["visualizing-stage"]} ref={stage}>
+        <div class="flex flex-col grow overflow-hidden bg-black" ref={stage}>
             <Index each={channelPropList()}>
                 {(item, index) => (
                     <ChannelSpectrum

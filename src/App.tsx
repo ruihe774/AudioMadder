@@ -3,8 +3,7 @@ import { createEffect, createMemo, createSignal, Switch, Match, batch } from "so
 import { defaultFFTPower, defaultLogBase, defaultPalette } from "./SpectrumVisualizer";
 import type { SpectrumVisualizerPalette, SpectrumVisualizerState } from "./SpectrumVisualizer";
 import SpectrumVisualizer from "./SpectrumVisualizer";
-import styles from "./styles.module.css";
-import { createTrigger, createThrottled } from "./utils.ts";
+import { createTrigger, createThrottled, cl } from "./utils.ts";
 
 const App = (): JSXElement => {
     let fileInput!: HTMLInputElement;
@@ -56,9 +55,9 @@ const App = (): JSXElement => {
     });
 
     return (
-        <>
+        <div class="flex flex-col gap-2 pt-2">
             <form
-                class={styles["file-input-form"]}
+                class="flex flex-row items-start gap-2 mx-2"
                 on:submit={(e) => {
                     e.preventDefault();
                     batch(() => {
@@ -81,7 +80,7 @@ const App = (): JSXElement => {
                     });
                 }}
             >
-                <input type="file" accept="audio/*" required ref={fileInput} on:change={invalidate} />
+                <input type="file" accept="audio/*" required class="grow" ref={fileInput} on:change={invalidate} />
                 <label>
                     FFT Size: 2^
                     <input
@@ -116,17 +115,28 @@ const App = (): JSXElement => {
                         <option value="spectrum">Spectrum</option>
                     </select>
                 </label>
-                <button type="button" disabled={state()?.type != "finished"} on:click={() => void setPlaying(true)}>
-                    Play
-                </button>
-                <input type="submit" value="Open" style={audioFile() && !invalid() ? { display: "none" } : {}} />
-                <input type="reset" value="Reset" style={!audioFile() || invalid() ? { display: "none" } : {}} />
+                <input
+                    type="button"
+                    value="Play"
+                    class="order-first min-w-16"
+                    disabled={state()?.type != "finished"}
+                    on:click={() => void setPlaying(true)}
+                />
+                <input
+                    type="submit"
+                    value="Open"
+                    class={cl`order-first min-w-16 ${audioFile() && !invalid()} hidden`}
+                />
+                <input
+                    type="reset"
+                    value="Reset"
+                    class={cl`order-first min-w-16 ${!audioFile() || invalid()} hidden`}
+                />
             </form>
-            <div class={styles["status-bar"]}>
-                <div>
+            <div class="flex items-center mx-2">
+                <div class={cl`${playing()} hidden`}>
                     <Switch fallback="Please open an audio file.">
                         <Match when={audioFile() && invalid()}>Please click "open" to process.</Match>
-                        <Match when={playing()}>{""}</Match>
                         <Match when={state()?.type == "decoding"}>
                             <>
                                 Decoding <progress />
@@ -152,12 +162,12 @@ const App = (): JSXElement => {
                 <audio
                     src={audioURL()}
                     controls
+                    class={cl`h-8 ${!playing()} invisible`}
                     ref={audioPlayer}
                     on:timeupdate={updateCurrentPlayingTime}
                     on:seeked={updateCurrentPlayingTime}
                     on:pause={updateCurrentPlayingTime}
                     on:ended={updateCurrentPlayingTime}
-                    style={playing() ? {} : { visibility: "hidden" }}
                 />
             </div>
             <SpectrumVisualizer
@@ -169,7 +179,7 @@ const App = (): JSXElement => {
                 onStateChanged={setState}
                 onSeekRequest={setSeekRequest}
             />
-        </>
+        </div>
     );
 };
 

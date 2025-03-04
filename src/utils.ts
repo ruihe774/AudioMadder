@@ -174,6 +174,22 @@ export function extractProps<P, D extends { [K in keyof D]: K extends keyof P ? 
     );
 }
 
+export function cl(strings: TemplateStringsArray, ...switches: any[]): string {
+    let s = strings[0];
+    switches.forEach((pred, i) => {
+        const a = strings[i + 1];
+        if (pred) {
+            s += a.slice(1);
+        } else {
+            const l = a.indexOf(" ", 1);
+            if (l != -1) {
+                s += a.slice(l + 1);
+            }
+        }
+    });
+    return s;
+}
+
 export function clamp(x: number, low: number, high: number): number {
     return low < high ? (x < low ? low : x > high ? high : x) : low;
 }
