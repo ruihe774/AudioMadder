@@ -2,7 +2,7 @@ import type { Component, Signal } from "solid-js";
 import { createSignal, Index, createEffect, untrack, createSelector } from "solid-js";
 import { createElementSize } from "@solid-primitives/resize-observer";
 import ChannelSpectrum from "./ChannelSpectrum";
-import { createDerived, createAsync, extractProps } from "./utils";
+import { createDerived, createAsync, extractProps, cl } from "./utils";
 
 const { PI, sin, round, ceil, log } = Math;
 
@@ -120,15 +120,19 @@ const SpectrumVisualizer: Component<{
     currentPlayingTime?: number;
     onStateChanged?: (state: SpectrumVisualizerState) => void;
     onSeekRequest?: (time: number) => void;
+    width?: string | number;
+    height?: string | number;
 }> = (props) => {
-    const { blob, fftPower, logBase, palette, currentPlayingTime, onStateChanged, onSeekRequest } = extractProps(
-        props,
-        {
+    const { blob, fftPower, logBase, palette, currentPlayingTime, onStateChanged, onSeekRequest, width, height } =
+        extractProps(props, {
             fftPower: defaultFFTPower,
             logBase: defaultLogBase,
             palette: defaultPalette,
-        },
-    );
+        });
+
+    const ensurePx = (size: string | number | undefined): string | undefined =>
+        typeof size == "number" ? size + "px" : size;
+
     const fftSize = (): number => 1 << fftPower();
 
     const [audioBuffer] = createAsync([blob], (abortSignal, blob) =>
@@ -321,7 +325,14 @@ const SpectrumVisualizer: Component<{
     const [horizontalScroll, setHorizontalScroll] = createSignal<number>(0);
 
     return (
-        <div class="flex flex-col grow overflow-hidden bg-black" ref={stage}>
+        <div
+            class={cl`${!width() && !height()} grow flex flex-col overflow-hidden bg-black`}
+            style={{
+                width: ensurePx(width()),
+                height: ensurePx(height()),
+            }}
+            ref={stage}
+        >
             <Index each={channelPropList()}>
                 {(item, index) => (
                     <ChannelSpectrum
