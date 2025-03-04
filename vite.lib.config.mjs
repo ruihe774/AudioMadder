@@ -1,6 +1,7 @@
 import { defineConfig } from "vite";
 import solid from "vite-plugin-solid";
 import tailwindcss from "@tailwindcss/vite";
+import { viteStaticCopy } from "vite-plugin-static-copy";
 
 export default defineConfig({
     plugins: [
@@ -10,6 +11,15 @@ export default defineConfig({
             },
         }),
         tailwindcss(),
+        viteStaticCopy({
+            targets: [
+                {
+                    src: "src/lib.d.ts",
+                    dest: ".",
+                    rename: "audio-madder.d.ts"
+                },
+            ],
+        }),
     ],
     build: {
         lib: {
