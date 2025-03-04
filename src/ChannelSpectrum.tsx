@@ -1,5 +1,5 @@
 import type { Component } from "solid-js";
-import { Show, batch, createEffect } from "solid-js";
+import { batch, createEffect } from "solid-js";
 import { cl, clamp, createTrigger, extractProps } from "./utils";
 import ChannelAxisY from "./ChannelAxisY.tsx";
 import ChannelAxisX from "./ChannelAxisX.tsx";
@@ -260,15 +260,16 @@ const ChannelSpectrum: Component<{
                         }}
                     />
                     <ChannelAxisX width={canvasTargetWidth()} height={axisXHeight} duration={duration()} />
-                    <Show when={currentPlayingTime() != null}>
-                        <div class="absolute left-0 top-[5px] cursor-ew-resize" ref={playingHeadContainer}>
-                            <PlayingHead
-                                width={playingHeadWidth}
-                                height={canvasTargetHeight() + 5}
-                                color={playingHeadColor() ?? "white"}
-                            />
-                        </div>
-                    </Show>
+                    <div
+                        class={cl`absolute left-0 top-[5px] cursor-ew-resize ${currentPlayingTime() == null} hidden`}
+                        ref={playingHeadContainer}
+                    >
+                        <PlayingHead
+                            width={playingHeadWidth}
+                            height={canvasTargetHeight() + 5}
+                            color={playingHeadColor() ?? "white"}
+                        />
+                    </div>
                 </div>
             </div>
         </div>
