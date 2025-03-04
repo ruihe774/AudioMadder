@@ -100,7 +100,7 @@ const ChannelSpectrum: Component<{
     let scrolling = false;
     let scrolledByUs = false;
     createTrigger([horizontalScroll], (scroll) => {
-        if (!scrolling) {
+        if (!hide() && !scrolling) {
             scrolledByUs = true;
             canvasContainer.scrollLeft = scroll;
         }
