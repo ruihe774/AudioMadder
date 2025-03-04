@@ -326,7 +326,7 @@ const SpectrumVisualizer: Component<{
 
     return (
         <div
-            class={cl`${!width() && !height()} grow flex flex-col overflow-hidden bg-black`}
+            class={cl`${!width() && !height()} grow flex flex-col overflow-hidden bg-black text-white`}
             style={{
                 width: ensurePx(width()),
                 height: ensurePx(height()),

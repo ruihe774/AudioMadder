@@ -36,13 +36,13 @@ const ChannelAxisX: Component<{
                     const x = (): number => (scale() * width()) / duration();
                     return (
                         <>
-                            <line x1={x()} x2={x()} y1="0" y2="5" stroke="white" />
+                            <line x1={x()} x2={x()} y1="0" y2="5" stroke="currentColor" />
                             {/*
                             // @ts-expect-error text-before-edge not typed */}
                             <text
                                 x={x()}
                                 y="5"
-                                fill="white"
+                                fill="currentColor"
                                 text-anchor="middle"
                                 font-family="monospace"
                                 font-size="0.6em"

@@ -43,11 +43,11 @@ const ChannelAxisY: Component<{
                     };
                     return (
                         <>
-                            <line x1={rightEdge() - 5} x2={rightEdge()} y1={y()} y2={y()} stroke="white" />
+                            <line x1={rightEdge() - 5} x2={rightEdge()} y1={y()} y2={y()} stroke="currentColor" />
                             <text
                                 x={rightEdge() - 10}
                                 y={y()}
-                                fill="white"
+                                fill="currentColor"
                                 text-anchor="end"
                                 font-family="monospace"
                                 dominant-baseline="middle"
