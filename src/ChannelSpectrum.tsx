@@ -124,7 +124,7 @@ const ChannelSpectrum: Component<{
 
         playingHeadTransitionAnimation?.cancel();
         const generateTranslate = (currentPlayingTime: number): string =>
-            `${(currentPlayingTime / duration()) * canvasTargetWidth() - playingHeadWidth / 2}px 0`;
+            `${(currentPlayingTime / duration()) * canvasTargetWidth() - playingHeadWidth / 2}px`;
         const currentTranslate = (playingHeadContainer.style.translate = generateTranslate(currentPlayingTime));
         playingHeadTransitionAnimation = playingHeadContainer.animate(
             [
