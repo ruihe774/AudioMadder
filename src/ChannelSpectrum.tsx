@@ -1,5 +1,5 @@
 import type { Component } from "solid-js";
-import { Show, batch, createEffect, createSignal } from "solid-js";
+import { Show, batch, createEffect } from "solid-js";
 import { clamp, createTrigger, extractProps } from "./utils";
 import ChannelAxisY from "./ChannelAxisY.tsx";
 import ChannelAxisX from "./ChannelAxisX.tsx";
@@ -57,8 +57,6 @@ const ChannelSpectrum: Component<{
     let canvasContainer!: HTMLDivElement;
     let playingHeadContainer!: HTMLDivElement;
 
-    const [scrolling, setScrolling] = createSignal(false);
-
     const axisYWidth = 60;
     const axisXHeight = 20;
     const topPadding = 10;
@@ -100,9 +98,10 @@ const ChannelSpectrum: Component<{
         onCanvasChanged()?.(canvas);
     });
 
+    let scrolling = false;
     let scrolledByUs = false;
     createTrigger([horizontalScroll], (scroll) => {
-        if (!scrolling()) {
+        if (!scrolling) {
             scrolledByUs = true;
             canvasContainer.scrollLeft = scroll;
         }
@@ -184,19 +183,19 @@ const ChannelSpectrum: Component<{
                         if (scrolledByUs) {
                             scrolledByUs = false;
                         } else {
-                            setScrolling(true);
+                            scrolling = true;
                             onHorizontalScrollChanged()?.(e.target.scrollLeft);
                             if (scrollStopAction) {
                                 clearTimeout(scrollStopAction);
                             }
                             scrollStopAction = setTimeout(() => {
-                                setScrolling(false);
+                                scrolling = false;
                                 scrollStopAction = void 0;
                             }, 100);
                         }
                     },
                 }}
-                on:scrollend={() => void setScrolling(false)}
+                on:scrollend={() => void (scrolling = false)}
                 on:mousemove={(e) => {
                     if (playingHeadDragging) {
                         const setCurrentPlayingTime = onSeekRequest();
