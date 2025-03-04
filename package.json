@@ -6,18 +6,21 @@
     "scripts": {
         "dev": "vite",
         "build": "vite build",
+        "build:lib": "vite build -c vite.lib.config.mjs",
         "preview": "vite preview",
         "check": "tsc",
-        "format": "prettier -w package.json tsconfig.json vite.config.mjs eslint.config.mjs .prettierrc.json src",
+        "format": "prettier -w package.json tsconfig.json vite.config.mjs vite.lib.config.mjs eslint.config.mjs .prettierrc.json src",
         "lint": "eslint src"
     },
     "dependencies": {
-        "@solid-primitives/resize-observer": "2.1.*",
-        "@solid-primitives/scheduled": "1.5.*",
-        "solid-js": "1.9.*",
+        "solid-js": "1.9.*"
+    },
+    "peerDependencies": {
         "tailwindcss": "4.*"
     },
     "devDependencies": {
+        "@solid-primitives/resize-observer": "2.1.*",
+        "@solid-primitives/scheduled": "1.5.*",
         "@tailwindcss/vite": "4.*",
         "@eslint/js": "9.*",
         "eslint": "9.*",
@@ -27,5 +30,17 @@
         "typescript-eslint": "8.*",
         "vite": "6.*",
         "vite-plugin-solid": "2.*"
-    }
+    },
+    "main": "lib/audio-madder.cjs",
+    "module": "lib/audio-madder.js",
+    "exports": {
+        ".": {
+            "import": "lib/audio-madder.js",
+            "require": "lib/audio-madder.cjs"
+        },
+        "./style.css": "lib/audio-madder.css"
+    },
+    "sideEffects": [
+        "*.css"
+    ]
 }

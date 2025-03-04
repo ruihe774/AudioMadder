@@ -126,16 +126,8 @@ const App = (): JSXElement => {
                     disabled={invalid() || state()?.type != "finished"}
                     on:click={() => void setPlaying(true)}
                 />
-                <input
-                    type="submit"
-                    value="Open"
-                    class={cl`${audioFile() && !invalid()} hidden`}
-                />
-                <input
-                    type="reset"
-                    value="Reset"
-                    class={cl`${!audioFile() || invalid()} hidden`}
-                />
+                <input type="submit" value="Open" class={cl`${audioFile() && !invalid()} hidden`} />
+                <input type="reset" value="Reset" class={cl`${!audioFile() || invalid()} hidden`} />
             </form>
             <div class="flex items-center mx-2">
                 <div class={cl`${playing()} hidden`}>
