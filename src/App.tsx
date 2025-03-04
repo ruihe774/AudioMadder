@@ -1,5 +1,5 @@
 import type { JSXElement } from "solid-js";
-import { createEffect, createMemo, createSignal, Switch, Match, batch } from "solid-js";
+import { createEffect, createMemo, createSignal, Switch, Match, batch, untrack } from "solid-js";
 import { defaultFFTPower, defaultLogBase, defaultPalette } from "./SpectrumVisualizer";
 import type { SpectrumVisualizerPalette, SpectrumVisualizerState } from "./SpectrumVisualizer";
 import SpectrumVisualizer from "./SpectrumVisualizer";
@@ -19,8 +19,12 @@ const App = (): JSXElement => {
     const [invalid, setInvalid] = createSignal(true);
     const invalidate = () => void setInvalid(true);
     const [playing, setPlaying] = createSignal(false);
-    const [currentPlayingTime, setCurrentPlayingTime] = createSignal(0);
-    const updateCurrentPlayingTime = () => void setCurrentPlayingTime(audioPlayer.currentTime);
+    const [currentPlayingTime, setCurrentPlayingTime] = createSignal<number>();
+    const updateCurrentPlayingTime = (): void => {
+        if (untrack(playing)) {
+            setCurrentPlayingTime(audioPlayer.currentTime);
+        }
+    };
     const [seekRequest, setSeekRequest] = createSignal<number>();
     const newPlayingTime = createThrottled(seekRequest, 50);
     const audioURL = createMemo<string | undefined>((prev) => {
@@ -42,6 +46,7 @@ const App = (): JSXElement => {
             });
         } else {
             audioPlayer.pause();
+            setCurrentPlayingTime(void 0);
         }
     });
     createEffect(() => {
@@ -119,7 +124,7 @@ const App = (): JSXElement => {
                     type="button"
                     value="Play"
                     class="order-first min-w-16"
-                    disabled={state()?.type != "finished"}
+                    disabled={invalid() || state()?.type != "finished"}
                     on:click={() => void setPlaying(true)}
                 />
                 <input
@@ -175,7 +180,7 @@ const App = (): JSXElement => {
                 fftPower={fftPower()}
                 logBase={logBase()}
                 palette={palette()}
-                currentPlayingTime={playing() ? currentPlayingTime() : void 0}
+                currentPlayingTime={currentPlayingTime()}
                 onStateChanged={setState}
                 onSeekRequest={setSeekRequest}
             />

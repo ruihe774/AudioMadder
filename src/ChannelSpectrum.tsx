@@ -261,10 +261,7 @@ const ChannelSpectrum: Component<{
                     />
                     <ChannelAxisX width={canvasTargetWidth()} height={axisXHeight} duration={duration()} />
                     <Show when={currentPlayingTime() != null}>
-                        <div
-                            class="absolute left-0 top-[5px] cursor-ew-resize"
-                            ref={playingHeadContainer}
-                        >
+                        <div class="absolute left-0 top-[5px] cursor-ew-resize" ref={playingHeadContainer}>
                             <PlayingHead
                                 width={playingHeadWidth}
                                 height={canvasTargetHeight() + 5}
