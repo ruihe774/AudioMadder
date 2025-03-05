@@ -17,6 +17,5 @@
         "noFallthroughCasesInSwitch": true,
         "noUncheckedSideEffectImports": true
     },
-    "include": ["src"],
-    "exclude": ["src/lib.d.ts"]
+    "include": ["src"]
 }
