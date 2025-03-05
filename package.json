@@ -26,6 +26,7 @@
         "eslint": "9.*",
         "eslint-config-prettier": "10.*",
         "prettier": "3.*",
+        "tailwindcss": "4.*",
         "typescript": "5.*",
         "typescript-eslint": "8.*",
         "vite": "6.*",
@@ -44,5 +45,9 @@
     },
     "sideEffects": [
         "*.css"
-    ]
+    ],
+    "packageManager": "yarn@4.7.0",
+    "resolutions": {
+        "@rushstack/node-core-library@npm:5.11.0": "patch:@rushstack/node-core-library@npm%3A5.11.0#~/.yarn/patches/@rushstack-node-core-library-npm-5.11.0-883ece811c.patch"
+    }
 }
