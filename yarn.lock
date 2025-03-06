@@ -825,6 +825,30 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@ruihe774/audio-madder@workspace:.":
+  version: 0.0.0-use.local
+  resolution: "@ruihe774/audio-madder@workspace:."
+  dependencies:
+    "@eslint/js": "npm:9.*"
+    "@solid-primitives/resize-observer": "npm:2.1.*"
+    "@solid-primitives/scheduled": "npm:1.5.*"
+    "@solid-primitives/static-store": "npm:0.1.*"
+    "@tailwindcss/vite": "npm:4.*"
+    eslint: "npm:9.*"
+    eslint-config-prettier: "npm:10.*"
+    prettier: "npm:3.*"
+    solid-js: "npm:1.9.*"
+    tailwindcss: "npm:4.*"
+    typescript: "npm:5.*"
+    typescript-eslint: "npm:8.*"
+    vite: "npm:6.*"
+    vite-plugin-dts: "npm:4.*"
+    vite-plugin-solid: "npm:2.*"
+  peerDependencies:
+    tailwindcss: 4.*
+  languageName: unknown
+  linkType: soft
+
 "@rushstack/node-core-library@npm:5.11.0":
   version: 5.11.0
   resolution: "@rushstack/node-core-library@npm:5.11.0"
@@ -1533,30 +1557,6 @@ __metadata:
   checksum: 10c0/b2972c5c23c63df66bca144dbc65d180efa74f25f8fd9b7d9a0a6c88ae839db32df3d54770dcb6460cf840d232b60695d1a6b1053f599d84e73f7437087712de
   languageName: node
   linkType: hard
-
-"audio-madder@workspace:.":
-  version: 0.0.0-use.local
-  resolution: "audio-madder@workspace:."
-  dependencies:
-    "@eslint/js": "npm:9.*"
-    "@solid-primitives/resize-observer": "npm:2.1.*"
-    "@solid-primitives/scheduled": "npm:1.5.*"
-    "@solid-primitives/static-store": "npm:0.1.*"
-    "@tailwindcss/vite": "npm:4.*"
-    eslint: "npm:9.*"
-    eslint-config-prettier: "npm:10.*"
-    prettier: "npm:3.*"
-    solid-js: "npm:1.9.*"
-    tailwindcss: "npm:4.*"
-    typescript: "npm:5.*"
-    typescript-eslint: "npm:8.*"
-    vite: "npm:6.*"
-    vite-plugin-dts: "npm:4.*"
-    vite-plugin-solid: "npm:2.*"
-  peerDependencies:
-    tailwindcss: 4.*
-  languageName: unknown
-  linkType: soft
 
 "babel-plugin-jsx-dom-expressions@npm:^0.39.7":
   version: 0.39.7

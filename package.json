@@ -1,8 +1,10 @@
 {
-    "name": "audio-madder",
-    "private": true,
+    "name": "@ruihe774/audio-madder",
     "version": "0.2.0",
     "type": "module",
+    "repository": "https://github.com/ruihe774/AudioMadder",
+    "author": "Misaki Kasumi",
+    "license": "BSL-1.0",
     "scripts": {
         "dev": "vite",
         "build": "vite build",
@@ -46,6 +48,9 @@
     },
     "sideEffects": [
         "*.css"
+    ],
+    "files": [
+        "lib"
     ],
     "packageManager": "yarn@4.7.0",
     "resolutions": {
