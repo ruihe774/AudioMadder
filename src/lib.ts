@@ -1,5 +1,4 @@
-import { createRoot, getOwner, runWithOwner } from "solid-js";
-import type { Owner } from "solid-js";
+import { createRoot } from "solid-js";
 import { createStaticStore } from "@solid-primitives/static-store";
 import type { StaticStoreSetter } from "@solid-primitives/static-store";
 import { untracked } from "./utils.ts";
@@ -15,9 +14,9 @@ export { SpectrumVisualizer };
 type SpectrumVisualizerElementProps = Omit<Parameters<typeof SpectrumVisualizer>[0], "width" | "height">;
 
 export class SpectrumVisualizerElement extends HTMLElement {
-    static observedAttributes = ["fft-power", "log-base", "palette"];
+    protected static observedAttributes = ["fft-power", "log-base", "palette"];
 
-    #owner: Owner;
+    #disposeRoot: (() => void) | undefined;
     #props: SpectrumVisualizerElementProps;
     #setProps: StaticStoreSetter<SpectrumVisualizerElementProps>;
     #shadow: ShadowRoot | undefined;
@@ -112,11 +111,10 @@ export class SpectrumVisualizerElement extends HTMLElement {
         }
     }
 
-    constructor() {
+    protected constructor() {
         super();
-        [this.#owner, this.#props, this.#setProps] = createRoot(() => [
-            getOwner()!,
-            ...createStaticStore<SpectrumVisualizerElementProps>({
+        [this.#props, this.#setProps] = createRoot(() =>
+            createStaticStore<SpectrumVisualizerElementProps>({
                 blob: void 0,
                 fftPower: void 0,
                 logBase: void 0,
@@ -125,18 +123,35 @@ export class SpectrumVisualizerElement extends HTMLElement {
                 onStateChanged: void 0,
                 onSeekRequest: void 0,
             }),
-        ]);
+        );
     }
 
-    connectedCallback(): void {
-        if (this.#shadow) return;
-        const shadow = (this.#shadow = this.attachShadow({ mode: "open" }));
-        const css = document.createElement("style");
-        css.textContent = "@layer{:host{display:flex;width:640px;height:480px}}" + style;
-        shadow.append(runWithOwner(this.#owner, () => SpectrumVisualizer(this.#props)) as Element, css);
+    protected connectedCallback(): void {
+        if (!this.#shadow) {
+            this.#shadow = this.attachShadow({ mode: "open" });
+            const css = document.createElement("style");
+            css.textContent = "@layer{:host{display:flex;width:640px;height:480px}}" + style;
+            this.#shadow.append(css);
+        }
+        if (!this.#disposeRoot) {
+            this.#disposeRoot = createRoot((dispose) => {
+                this.#shadow!.append(SpectrumVisualizer(this.#props) as Element);
+                return dispose;
+            });
+        }
     }
 
-    attributeChangedCallback(name: string, _: string, value: string): void {
+    protected disconnectedCallback(): void {
+        void Promise.resolve().then(() => {
+            if (!this.isConnected && this.#disposeRoot) {
+                this.#shadow!.lastChild!.remove();
+                this.#disposeRoot();
+                this.#disposeRoot = void 0;
+            }
+        });
+    }
+
+    protected attributeChangedCallback(name: string, _: string, value: string): void {
         switch (name) {
             case "fft-power":
                 this.fftPower = value;
