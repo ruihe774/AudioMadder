@@ -10,8 +10,11 @@ export { style };
 import SpectrumVisualizer from "./SpectrumVisualizer.tsx";
 import type { SpectrumVisualizerPalette, SpectrumVisualizerState } from "./SpectrumVisualizer.tsx";
 export { SpectrumVisualizer };
+export type { SpectrumVisualizerPalette, SpectrumVisualizerState };
 
 type SpectrumVisualizerElementProps = Omit<Parameters<typeof SpectrumVisualizer>[0], "width" | "height">;
+export type SpectrumVisualizerStateChangedEvent = CustomEvent<SpectrumVisualizerState>;
+export type SpectrumVisualizerStateSeekRequestEvent = CustomEvent<{ time: number }>;
 
 export class SpectrumVisualizerElement extends HTMLElement {
     protected static observedAttributes = ["fft-power", "log-base", "palette"];
@@ -83,34 +86,6 @@ export class SpectrumVisualizerElement extends HTMLElement {
         }
     }
 
-    @untracked
-    get onStateChanged(): ((state: SpectrumVisualizerState) => void) | null {
-        return this.#props.onStateChanged ?? null;
-    }
-    set onStateChanged(onStateChanged: ((state: SpectrumVisualizerState) => void) | null | undefined) {
-        if (onStateChanged == null) {
-            this.#setProps({ onStateChanged: void 0 });
-        } else if (typeof onStateChanged == "function") {
-            this.#setProps({ onStateChanged });
-        } else {
-            throw new TypeError("Expected function");
-        }
-    }
-
-    @untracked
-    get onSeekRequest(): ((time: number) => void) | null {
-        return this.#props.onSeekRequest ?? null;
-    }
-    set onSeekRequest(onSeekRequest: ((time: number) => void) | null | undefined) {
-        if (onSeekRequest == null) {
-            this.#setProps({ onSeekRequest: void 0 });
-        } else if (typeof onSeekRequest == "function") {
-            this.#setProps({ onSeekRequest });
-        } else {
-            throw new TypeError("Expected function");
-        }
-    }
-
     protected constructor() {
         super();
         [this.#props, this.#setProps] = createRoot(() =>
@@ -120,8 +95,18 @@ export class SpectrumVisualizerElement extends HTMLElement {
                 logBase: void 0,
                 palette: void 0,
                 currentPlayingTime: void 0,
-                onStateChanged: void 0,
-                onSeekRequest: void 0,
+                onStateChanged: (state) =>
+                    void this.dispatchEvent(
+                        new CustomEvent<SpectrumVisualizerStateChangedEvent["detail"]>("statechanged", {
+                            detail: state,
+                        }),
+                    ),
+                onSeekRequest: (time) =>
+                    void this.dispatchEvent(
+                        new CustomEvent<SpectrumVisualizerStateSeekRequestEvent["detail"]>("seekrequest", {
+                            detail: { time },
+                        }),
+                    ),
             }),
         );
     }
