@@ -16,7 +16,7 @@ export default defineConfig({
         }),
     ],
     build: {
-        target: "es2022",
+        target: "esnext",
         lib: {
             entry: "src/lib.ts",
             name: "AudioMadder",
