@@ -949,7 +949,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@solid-primitives/static-store@npm:^0.1.0":
+"@solid-primitives/static-store@npm:0.1.*, @solid-primitives/static-store@npm:^0.1.0":
   version: 0.1.0
   resolution: "@solid-primitives/static-store@npm:0.1.0"
   dependencies:
@@ -1541,6 +1541,7 @@ __metadata:
     "@eslint/js": "npm:9.*"
     "@solid-primitives/resize-observer": "npm:2.1.*"
     "@solid-primitives/scheduled": "npm:1.5.*"
+    "@solid-primitives/static-store": "npm:0.1.*"
     "@tailwindcss/vite": "npm:4.*"
     eslint: "npm:9.*"
     eslint-config-prettier: "npm:10.*"

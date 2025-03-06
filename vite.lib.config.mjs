@@ -28,5 +28,6 @@ export default defineConfig({
             treeshake: "recommended",
         },
         minify: false,
+        cssMinify: true,
     },
 });
