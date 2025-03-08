@@ -5,7 +5,7 @@ import ChannelAxisY from "./ChannelAxisY.tsx";
 import ChannelAxisX from "./ChannelAxisX.tsx";
 import PlayingHead from "./PlayingHead.tsx";
 
-const { pow } = Math;
+const { pow, hypot } = Math;
 
 function isModifierPreventing(e: MouseEvent | KeyboardEvent): boolean {
     return e.getModifierState("Accel");
@@ -63,7 +63,11 @@ const ChannelSpectrum: Component<{
     const canvasTargetWidth = (): number => unscaledCanvasWidth() * (horizontalScale() ?? 1);
     const canvasTargetHeight = (): number => targetHeight() - axisXHeight - topPadding;
 
-    const stableScale = (e: MouseEvent & { currentTarget: HTMLElement }, newScale: number): void => {
+    const stableScale = (
+        e: Pick<MouseEvent, "x" | "preventDefault"> & { currentTarget: HTMLElement },
+        newScale: number,
+    ): void => {
+        newScale = clamp(newScale, 1, ((pixelWidth() / unscaledCanvasWidth()) * 2) / devicePixelRatio);
         const setHorizontalScale = onHorizontalScaleChanged();
         const setHorizontalScroll = onHorizontalScrollChanged();
         const oldScale = horizontalScale();
@@ -90,6 +94,13 @@ const ChannelSpectrum: Component<{
         const newScale = horizontalScale() == pixelToPixelScale ? 1 : pixelToPixelScale;
         stableScale(e, newScale);
     };
+
+    let pinchInitial:
+        | {
+              scale: number;
+              distance: number;
+          }
+        | undefined;
 
     createEffect(() => {
         canvas.width = pixelWidth();
@@ -167,17 +178,47 @@ const ChannelSpectrum: Component<{
                             e.deltaMode == WheelEvent.DOM_DELTA_PIXEL &&
                             !isModifierPreventing(e)
                         ) {
+                            stableScale(e, scale * pow(1.2, -e.deltaY / 100));
+                        }
+                    },
+                }}
+                on:touchstart={{
+                    passive: false,
+                    handleEvent(e) {
+                        const scale = horizontalScale();
+                        if (scale && e.touches.length == 2) {
+                            e.preventDefault();
+                            const [{ clientX: x1, clientY: y1 }, { clientX: x2, clientY: y2 }] = Array.from(e.touches);
+                            pinchInitial = {
+                                scale,
+                                distance: hypot(x1 - x2, y1 - y2),
+                            };
+                        }
+                    },
+                }}
+                on:touchmove={{
+                    passive: false,
+                    handleEvent(e) {
+                        const scale = horizontalScale();
+                        if (scale && e.touches.length == 2 && pinchInitial) {
+                            e.preventDefault();
+                            const { scale: initialScale, distance: initialDistance } = pinchInitial;
+                            const [{ clientX: x1, clientY: y1 }, { clientX: x2, clientY: y2 }] = Array.from(e.touches);
+                            const currentDistance = hypot(x1 - x2, y1 - y2);
+                            const newScale = initialScale * (currentDistance / initialDistance);
                             stableScale(
-                                e,
-                                clamp(
-                                    scale * pow(1.2, -e.deltaY / 100),
-                                    1,
-                                    ((pixelWidth() / unscaledCanvasWidth()) * 2) / devicePixelRatio,
-                                ),
+                                {
+                                    x: (x1 + x2) / 2,
+                                    currentTarget: e.currentTarget,
+                                    preventDefault: e.preventDefault.bind(e),
+                                },
+                                newScale,
                             );
                         }
                     },
                 }}
+                on:touchcancel={() => void (pinchInitial = void 0)}
+                on:touchend={() => void (pinchInitial = void 0)}
                 on:scroll={{
                     passive: true,
                     handleEvent(e) {
