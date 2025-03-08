@@ -5,7 +5,7 @@ import { throttle } from "@solid-primitives/scheduled";
 function createHelper<T extends any[], R>(
     deps: { readonly [K in keyof T]: Accessor<T[K] | undefined> },
     fn: (...args: T) => R,
-): () => R | undefined {
+): Accessor<R | undefined> {
     return () => {
         const args = deps.map((dep) => dep());
         if (args.includes(void 0)) return;
@@ -160,7 +160,7 @@ export function extractProps<P, D extends { [K in keyof D]: K extends keyof P ? 
     props: P,
     defaults?: D,
 ): {
-    readonly [K in keyof P]-?: K extends keyof D ? () => Exclude<P[K], undefined> : () => P[K];
+    readonly [K in keyof P]-?: Accessor<K extends keyof D ? Exclude<P[K], undefined> : P[K]>;
 } {
     // @ts-expect-error proxy
     return new Proxy(
