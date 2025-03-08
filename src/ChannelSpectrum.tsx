@@ -11,6 +11,10 @@ function isModifierPreventing(e: MouseEvent | KeyboardEvent): boolean {
     return e.getModifierState("Accel");
 }
 
+export const axisYWidth = 60;
+export const axisXHeight = 20;
+export const topPadding = 10;
+
 const ChannelSpectrum: Component<{
     onCanvasChanged?: (canvas: HTMLCanvasElement) => void;
     pixelWidth: number;
@@ -56,9 +60,6 @@ const ChannelSpectrum: Component<{
     let canvasContainer!: HTMLDivElement;
     let playingHeadContainer!: HTMLDivElement;
 
-    const axisYWidth = 60;
-    const axisXHeight = 20;
-    const topPadding = 10;
     const unscaledCanvasWidth = (): number => targetWidth() - axisYWidth;
     const canvasTargetWidth = (): number => unscaledCanvasWidth() * (horizontalScale() ?? 1);
     const canvasTargetHeight = (): number => targetHeight() - axisXHeight - topPadding;

@@ -1,5 +1,5 @@
 import type { Accessor } from "solid-js";
-import { createMemo, createEffect, untrack, createSignal, onCleanup, batch } from "solid-js";
+import { createMemo, createEffect, untrack, createSignal, onCleanup, batch, onMount } from "solid-js";
 import { throttle } from "@solid-primitives/scheduled";
 
 function createHelper<T extends any[], R>(
@@ -148,6 +148,12 @@ export function createThrottled<T>(source: Accessor<T | undefined>, timeout: num
         }
     });
     return throttled;
+}
+
+export function createHook(fn: (abort: AbortSignal) => void): void {
+    let abortController!: AbortController;
+    onMount(() => fn((abortController = new AbortController()).signal));
+    onCleanup(() => abortController.abort());
 }
 
 export function extractProps<P, D extends { [K in keyof D]: K extends keyof P ? Exclude<P[K], undefined> : never }>(

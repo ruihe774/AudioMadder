@@ -3,7 +3,7 @@ import { createEffect, createMemo, createSignal, Switch, Match, batch, untrack }
 import { defaultFFTPower, defaultLogBase, defaultPalette } from "./SpectrumVisualizer";
 import type { SpectrumVisualizerPalette, SpectrumVisualizerState } from "./SpectrumVisualizer";
 import SpectrumVisualizer from "./SpectrumVisualizer";
-import { createTrigger, createThrottled, cl } from "./utils.ts";
+import { createTrigger, createThrottled, cl, createHook } from "./utils.ts";
 
 const App = (): JSXElement => {
     let fileInput!: HTMLInputElement;
@@ -57,6 +57,23 @@ const App = (): JSXElement => {
     createTrigger([newPlayingTime], (newPlayingTime) => {
         audioPlayer.currentTime = newPlayingTime;
         setSeekRequest(void 0);
+    });
+
+    const [gamepad, setGamepad] = createSignal<Gamepad>();
+    createHook((abort) => {
+        const gamepadConnected = (): void => {
+            setGamepad(navigator.getGamepads().find((gamepad) => gamepad?.mapping == "standard") ?? void 0);
+        };
+        const gamepadDisconnected = (): void => {
+            setGamepad(void 0);
+        };
+        addEventListener("gamepadconnected", gamepadConnected);
+        addEventListener("gamepaddisconnected", gamepadDisconnected);
+        abort.onabort = () => {
+            gamepadDisconnected();
+            removeEventListener("gamepadconnected", gamepadConnected);
+            removeEventListener("gamepaddisconnected", gamepadDisconnected);
+        };
     });
 
     return (
@@ -174,6 +191,7 @@ const App = (): JSXElement => {
                 currentPlayingTime={currentPlayingTime()}
                 onStateChanged={setState}
                 onSeekRequest={setSeekRequest}
+                gamepad={gamepad()}
             />
         </div>
     );

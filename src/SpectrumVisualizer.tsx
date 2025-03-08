@@ -1,10 +1,11 @@
 import type { Component, Signal } from "solid-js";
+import { batch } from "solid-js";
 import { createSignal, Index, createEffect, untrack, createSelector } from "solid-js";
 import { createElementSize } from "@solid-primitives/resize-observer";
-import ChannelSpectrum from "./ChannelSpectrum";
-import { createDerived, createAsync, extractProps, cl } from "./utils";
+import ChannelSpectrum, { axisYWidth } from "./ChannelSpectrum";
+import { createDerived, createAsync, extractProps, cl, clamp } from "./utils";
 
-const { PI, sin, round, ceil, log } = Math;
+const { PI, sin, round, ceil, log, abs, pow } = Math;
 
 function generatePalette(fn: (level: number) => number): number[] {
     const palette: number[] = [];
@@ -122,13 +123,24 @@ const SpectrumVisualizer: Component<{
     onSeekRequest?: (time: number) => void;
     width?: string | number;
     height?: string | number;
+    gamepad?: Gamepad;
 }> = (props) => {
-    const { blob, fftPower, logBase, palette, currentPlayingTime, onStateChanged, onSeekRequest, width, height } =
-        extractProps(props, {
-            fftPower: defaultFFTPower,
-            logBase: defaultLogBase,
-            palette: defaultPalette,
-        });
+    const {
+        blob,
+        fftPower,
+        logBase,
+        palette,
+        currentPlayingTime,
+        onStateChanged,
+        onSeekRequest,
+        width,
+        height,
+        gamepad,
+    } = extractProps(props, {
+        fftPower: defaultFFTPower,
+        logBase: defaultLogBase,
+        palette: defaultPalette,
+    });
 
     const ensurePx = (size: string | number | undefined): string | undefined =>
         typeof size == "number" ? size + "px" : size;
@@ -323,6 +335,65 @@ const SpectrumVisualizer: Component<{
 
     const [horizontalScale, setHorizontalScale] = createSignal<number>(1);
     const [horizontalScroll, setHorizontalScroll] = createSignal<number>(0);
+
+    let gamepadPollingId: number | undefined;
+    let lastGamepadPoll: number | undefined;
+    createEffect(() => {
+        const poll = (time: DOMHighResTimeStamp): void => {
+            gamepadPollingId = void 0;
+            if (lastGamepadPoll == null) {
+                lastGamepadPoll = time;
+            } else {
+                const activeGamepad = untrack(gamepad);
+                if (activeGamepad == null) {
+                    return;
+                }
+                const duration = time - lastGamepadPoll;
+                lastGamepadPoll = time;
+                let [lx, ly, rx, ry] = activeGamepad.axes;
+                if (abs(lx) < 0.1 || abs(ly) > abs(lx)) lx = 0;
+                if (abs(ly) < 0.1 || abs(lx) > abs(ly)) ly = 0;
+                if (abs(rx) < 0.1 || abs(ry) > abs(rx)) rx = 0;
+                if (abs(ry) < 0.1 || abs(rx) > abs(ry)) ry = 0;
+                lx *= duration;
+                ly *= duration;
+                rx *= duration;
+                ry *= duration;
+                batch(() => {
+                    const pixelWidth = untrack(channelPropList)?.[0]?.width;
+                    const targetWidth = untrack(() => targetSize.width);
+                    if (!pixelWidth || !targetWidth) return;
+                    const unscaledCanvasWidth = targetWidth - axisYWidth;
+                    let oldScale!: number, newScale!: number;
+                    setHorizontalScale(
+                        (scale) =>
+                            (newScale = clamp(
+                                (oldScale = scale) * pow(1.001, -ry),
+                                1,
+                                ((pixelWidth / unscaledCanvasWidth) * 2) / devicePixelRatio,
+                            )),
+                    );
+                    setHorizontalScroll((oldScroll) =>
+                        clamp(
+                            oldScroll + (unscaledCanvasWidth / 2 + oldScroll) * (newScale / oldScale - 1) + rx,
+                            0,
+                            unscaledCanvasWidth * (newScale - 1),
+                        ),
+                    );
+                    const playingTime = untrack(currentPlayingTime);
+                    const setPlayingTime = untrack(onSeekRequest);
+                    if (playingTime && setPlayingTime && lx) {
+                        setPlayingTime(playingTime + lx / 5);
+                    }
+                });
+            }
+            gamepadPollingId = requestAnimationFrame(poll);
+        };
+        if (gamepad() && gamepadPollingId == null) {
+            lastGamepadPoll = void 0;
+            gamepadPollingId = requestAnimationFrame(poll);
+        }
+    });
 
     return (
         <div
