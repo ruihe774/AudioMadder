@@ -5,7 +5,7 @@ import ChannelAxisY from "./ChannelAxisY.tsx";
 import ChannelAxisX from "./ChannelAxisX.tsx";
 import PlayingHead from "./PlayingHead.tsx";
 
-const { pow, hypot } = Math;
+const { pow, abs } = Math;
 
 function isModifierPreventing(e: MouseEvent | KeyboardEvent): boolean {
     return e.getModifierState("Accel");
@@ -189,10 +189,10 @@ const ChannelSpectrum: Component<{
                         const scale = horizontalScale();
                         if (scale && e.touches.length == 2) {
                             e.preventDefault();
-                            const [{ clientX: x1, clientY: y1 }, { clientX: x2, clientY: y2 }] = Array.from(e.touches);
+                            const [{ clientX: x1 }, { clientX: x2 }] = Array.from(e.touches);
                             pinchInitial = {
                                 scale,
-                                distance: hypot(x1 - x2, y1 - y2),
+                                distance: abs(x1 - x2),
                             };
                         }
                     },
@@ -204,8 +204,8 @@ const ChannelSpectrum: Component<{
                         if (scale && e.touches.length == 2 && pinchInitial) {
                             e.preventDefault();
                             const { scale: initialScale, distance: initialDistance } = pinchInitial;
-                            const [{ clientX: x1, clientY: y1 }, { clientX: x2, clientY: y2 }] = Array.from(e.touches);
-                            const currentDistance = hypot(x1 - x2, y1 - y2);
+                            const [{ clientX: x1 }, { clientX: x2 }] = Array.from(e.touches);
+                            const currentDistance = abs(x1 - x2);
                             const newScale = initialScale * (currentDistance / initialDistance);
                             stableScale(
                                 {
