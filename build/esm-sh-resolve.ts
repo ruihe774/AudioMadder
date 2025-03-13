@@ -1,18 +1,18 @@
 import { readFile } from "node:fs/promises";
-import type { Plugin } from "vite";
+import type { Plugin, HtmlTagDescriptor } from "vite";
 
 const dependencies = JSON.parse(await readFile("package.json", "utf8")).dependencies as Record<string, string>;
 
 export default function esmShResolve(): Plugin {
-    const usedPackages = new Set<string>();
+    const usedPackages = new Map<string, Set<string>>();
     return {
         name: "esm-sh-resolve",
         enforce: "pre",
         apply: "build",
         resolveId(id: string) {
-            const [packageName] = splitPackageName(id);
+            const [packageName, subPath] = splitPackageName(id);
             if (Object.hasOwn(dependencies, packageName)) {
-                usedPackages.add(packageName);
+                usedPackages.set(packageName, (usedPackages.get(packageName) ?? new Set<string>()).add(subPath));
                 return {
                     external: "absolute",
                     id,
@@ -21,12 +21,24 @@ export default function esmShResolve(): Plugin {
         },
         transformIndexHtml() {
             const imports: Record<string, string> = {};
-            for (const packageName of usedPackages) {
+            const preloads: HtmlTagDescriptor[] = [];
+            for (const [packageName, subPaths] of usedPackages.entries()) {
                 const version = dependencies[packageName];
-                imports[packageName] = `https://esm.sh/${packageName}@${version}`;
-                imports[packageName + "/"] = `https://esm.sh/${packageName}@${version}/`;
+                const rootURL = `https://esm.sh/${packageName}@${version}`;
+                imports[packageName] = rootURL;
+                imports[packageName + "/"] = rootURL + "/";
+                preloads.push(
+                    ...subPaths.values().map((subPath) => ({
+                        tag: "link",
+                        attrs: {
+                            rel: "modulepreload",
+                            href: rootURL + subPath,
+                        },
+                    })),
+                );
             }
             return [
+                ...preloads,
                 {
                     tag: "script",
                     attrs: { type: "importmap" },
