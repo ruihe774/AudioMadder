@@ -6,12 +6,12 @@
     "author": "Misaki Kasumi",
     "license": "BSL-1.0",
     "scripts": {
-        "dev": "vite",
-        "build": "vite build",
-        "build:lib": "vite build -c vite.lib.config.mjs",
-        "preview": "vite preview",
+        "dev": "vite -c build/vite.app.config.ts",
+        "build": "vite build -c build/vite.app.config.ts",
+        "preview": "vite preview -c build/vite.app.config.ts",
+        "build:lib": "vite build -c build/vite.lib.config.ts",
         "check": "tsc",
-        "format": "prettier -w package.json tsconfig.json vite.config.mjs vite.lib.config.mjs eslint.config.mjs .prettierrc.json src",
+        "format": "prettier -w package.json tsconfig.json eslint.config.mjs .prettierrc.json src build",
         "lint": "eslint src"
     },
     "dependencies": {
@@ -26,8 +26,10 @@
         "@solid-primitives/scheduled": "1.5.*",
         "@solid-primitives/static-store": "0.1.*",
         "@tailwindcss/vite": "4.*",
+        "@types/node": ">=18",
         "eslint": "9.*",
         "eslint-config-prettier": "10.*",
+        "parse5-html-rewriting-stream": "7.*",
         "prettier": "3.*",
         "tailwindcss": "4.*",
         "typescript": "5.*",

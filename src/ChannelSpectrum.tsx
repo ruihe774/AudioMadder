@@ -119,7 +119,7 @@ const ChannelSpectrum: Component<{
     });
 
     // workaround for Safari which does not support scrollend
-    let scrollStopAction: number | undefined;
+    let scrollStopAction: ReturnType<typeof setTimeout> | undefined;
 
     const playingHeadWidth = 10;
     let lastPlayingTimeUpdate = 0;
