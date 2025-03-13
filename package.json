@@ -36,6 +36,7 @@
         "typescript-eslint": "8.*",
         "vite": "6.*",
         "vite-plugin-dts": "4.*",
+        "vite-plugin-pwa": "0.21.*",
         "vite-plugin-solid": "2.*"
     },
     "main": "./lib/audio-madder.cjs",

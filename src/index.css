@@ -14,10 +14,12 @@
     }
 }
 
-:root {
+:root,
+body {
     @apply font-system;
     @apply overscroll-none;
-    @apply dark:scheme-dark;
+    @apply scheme-dark;
+    @apply bg-neutral-900;
 }
 
 body {

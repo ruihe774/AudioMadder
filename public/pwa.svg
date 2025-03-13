@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" version="1.1">
+    <defs>
+        <radialGradient id="GradientReflect" cx="0.6" cy="0.6" r="0.6" fx="1" fy="1">
+            <stop offset="9%" stop-color="#FFFF99" />
+            <stop offset="22%" stop-color="#FFCA00" />
+            <stop offset="27%" stop-color="#FF9B00" />
+            <stop offset="40%" stop-color="#FF0000" />
+            <stop offset="70%" stop-color="#6E007F" />
+            <stop offset="87%" stop-color="#000051" />
+            <stop offset="100%" stop-color="#000000" />
+        </radialGradient>
+        <filter id="myFilter">
+            <feColorMatrix type="saturate" values="0.9" />
+            <feColorMatrix type="matrix" values="0.9 0 0 0 0 0 0.9 0 0 0 0 0 0.9 0 0 0 0 0 1 0" />
+        </filter>
+    </defs>
+    <rect x="0" y="0" rx="10" ry="10" width="100" height="100" fill="url(#GradientReflect)" filter="url(#myFilter)" />
+    <text x="15" y="50" fill="white" font-family="Nimbus Mono PS" font-size="50" letter-spacing="3" stroke="black" stroke-width="1" stroke-linejoin="round" font-weight="bold">AM</text>
+</svg>
