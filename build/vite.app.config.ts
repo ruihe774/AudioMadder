@@ -12,11 +12,10 @@ export default defineConfig({
             },
         }),
         tailwindcss(),
-        esmShResolve(),
         htmlHeadTrim(),
     ],
     build: {
-        target: ["chrome104", "firefox108", "safari16.4"],
+        target: ["chrome104", "firefox78", "safari14.1"],
         modulePreload: false,
     },
 });
