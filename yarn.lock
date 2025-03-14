@@ -1938,6 +1938,7 @@ __metadata:
     vite-plugin-dts: "npm:4.*"
     vite-plugin-pwa: "npm:0.21.*"
     vite-plugin-solid: "npm:2.*"
+    workbox-window: "npm:7.*"
   peerDependencies:
     tailwindcss: 4.*
   languageName: unknown
@@ -6908,7 +6909,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"workbox-window@npm:7.3.0, workbox-window@npm:^7.3.0":
+"workbox-window@npm:7.*, workbox-window@npm:7.3.0, workbox-window@npm:^7.3.0":
   version: 7.3.0
   resolution: "workbox-window@npm:7.3.0"
   dependencies:

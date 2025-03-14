@@ -37,7 +37,8 @@
         "vite": "6.*",
         "vite-plugin-dts": "4.*",
         "vite-plugin-pwa": "0.21.*",
-        "vite-plugin-solid": "2.*"
+        "vite-plugin-solid": "2.*",
+        "workbox-window": "7.*"
     },
     "main": "./lib/audio-madder.cjs",
     "module": "./lib/audio-madder.js",
