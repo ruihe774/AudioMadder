@@ -147,7 +147,7 @@ const SpectrumVisualizer: Component<{
 
     const fftSize = (): number => 1 << fftPower();
 
-    const [audioBuffer] = createAsync([blob], (abortSignal, blob) =>
+    const audioBuffer = createAsync([blob], (abortSignal, blob) =>
         new Promise<ArrayBuffer>((resolve, reject) => {
             const reader = new FileReader();
             reader.readAsArrayBuffer(blob);
@@ -164,7 +164,10 @@ const SpectrumVisualizer: Component<{
         }),
     );
 
-    const canvasRefs = createDerived([() => audioBuffer()?.numberOfChannels], (numberOfChannels) => {
+    const pixelWidth = (): number => ceil((audioBuffer()?.length ?? 0) / fftSize());
+    const pixelHeight = (): number => fftSize() >> 1;
+
+    const canvasRefs = createDerived([audioBuffer], ({ numberOfChannels }) => {
         const canvasRefs: Signal<HTMLCanvasElement | undefined>[] = [];
         for (let i = 0; i < numberOfChannels; ++i) {
             canvasRefs.push(createSignal());
@@ -172,7 +175,20 @@ const SpectrumVisualizer: Component<{
         return canvasRefs;
     });
 
-    const audioSystem = createDerived([audioBuffer], (audioBuffer) => {
+    const canvasList = createDerived([canvasRefs], (canvasRefs) => {
+        const canvasList: HTMLCanvasElement[] = [];
+        for (const [ref, _] of canvasRefs) {
+            const image = ref();
+            if (image) canvasList.push(image);
+            else return;
+        }
+        return canvasList;
+    });
+
+    const [progress, setProgress] = createSignal<number | Error>(0);
+    let analysingTotalTime!: number;
+
+    const { abort: abortAnalysing } = createAsync([audioBuffer, canvasList], (abortSignal, audioBuffer, canvasList) => {
         const audioContext = new OfflineAudioContext(
             audioBuffer.numberOfChannels,
             audioBuffer.length,
@@ -180,7 +196,6 @@ const SpectrumVisualizer: Component<{
         );
         const bufferSource = audioContext.createBufferSource();
         bufferSource.buffer = audioBuffer;
-        bufferSource.start();
         const channelSplitter = audioContext.createChannelSplitter(audioBuffer.numberOfChannels);
         bufferSource.connect(channelSplitter);
         const channelMerger = audioContext.createChannelMerger(audioBuffer.numberOfChannels);
@@ -198,102 +213,67 @@ const SpectrumVisualizer: Component<{
         const scriptProcessor = audioContext.createScriptProcessor(fftSize(), 1, 1);
         channelMerger.connect(scriptProcessor);
         scriptProcessor.connect(audioContext.destination);
-        return {
-            audioContext,
-            bufferSource,
-            channelSplitter,
-            analysers,
-            channelMerger,
-            scriptProcessor,
-            palette: palettes[palette()](),
-            indices: generateIndices(logBase(), analysers[0].frequencyBinCount),
-        };
-    });
 
-    const channelPropList = createDerived(
-        [audioBuffer, canvasRefs, audioSystem],
-        (audioBuffer, canvasRefs, audioSystem) => {
-            return canvasRefs.map(([_, ref], i) => {
-                return {
-                    ref,
-                    width: ceil(audioBuffer.length / fftSize()),
-                    height: audioSystem.analysers[i].frequencyBinCount,
-                };
+        const binCount = pixelHeight();
+        const colors = palettes[palette()]();
+        const indices = generateIndices(logBase(), binCount);
+
+        const renderingContextList = canvasList.map(
+            (canvas) =>
+                canvas.getContext("2d", {
+                    alpha: false,
+                    desynchronized: true,
+                })!,
+        );
+        const freeBufferList: Uint8Array[] = [];
+        const imageDataList: ImageData[] = renderingContextList.map((renderingContext) =>
+            renderingContext.createImageData(1, binCount),
+        );
+        let step = 0;
+        const startTime = performance.now();
+        scriptProcessor.onaudioprocess = () => {
+            const currentStep = step++;
+            const fftBuffers = analysers.map((analyser) => {
+                const fftBuffer = freeBufferList.pop() ?? new Uint8Array(binCount);
+                analyser.getByteFrequencyData(fftBuffer);
+                return fftBuffer;
             });
-        },
-    );
-
-    const canvasList = createDerived([canvasRefs], (canvasRefs) => {
-        const canvasList: HTMLCanvasElement[] = [];
-        for (const [ref, _] of canvasRefs) {
-            const image = ref();
-            if (image) canvasList.push(image);
-            else return;
-        }
-        return canvasList;
-    });
-
-    const [progress, setProgress] = createSignal<number | Error>(0);
-    let analysingTotalTime!: number;
-
-    const [_, abortAnalysing] = createAsync([audioSystem, canvasList], (abortSignal, audioSystem, canvasList) =>
-        untrack(() => {
-            const { audioContext, bufferSource, analysers, scriptProcessor, palette, indices } = audioSystem;
-            const renderingContextList = canvasList.map(
-                (canvas) =>
-                    canvas.getContext("2d", {
-                        alpha: false,
-                        desynchronized: true,
-                    })!,
-            );
-            const freeBufferList: Uint8Array[] = [];
-            const imageDataList: ImageData[] = renderingContextList.map((renderingContext, i) =>
-                renderingContext.createImageData(1, analysers[i].frequencyBinCount),
-            );
-            let step = 0;
-            const startTime = performance.now();
-            scriptProcessor.onaudioprocess = () => {
-                const currentStep = step++;
-                const fftBuffers = analysers.map((analyser) => {
-                    const fftBuffer = freeBufferList.pop() ?? new Uint8Array(analyser.frequencyBinCount);
-                    analyser.getByteFrequencyData(fftBuffer);
-                    return fftBuffer;
-                });
-                fftBuffers.forEach((fftBuffer, i) => {
-                    const renderingContext = renderingContextList[i];
-                    const { length } = fftBuffer;
-                    const ymax = length - 1;
-                    const imageData = imageDataList[i];
-                    const imageView = new DataView(imageData.data.buffer);
-                    if (indices) {
-                        for (let i = 0; i < length; ++i) {
-                            imageView.setUint32(4 * i, palette[fftBuffer[ymax - indices[i]]], true);
-                        }
-                    } else {
-                        fftBuffer.forEach((v, i) => {
-                            imageView.setUint32(4 * (ymax - i), palette[v], true);
-                        });
+            fftBuffers.forEach((fftBuffer, i) => {
+                const renderingContext = renderingContextList[i];
+                const { length } = fftBuffer;
+                const ymax = length - 1;
+                const imageData = imageDataList[i];
+                const imageView = new DataView(imageData.data.buffer);
+                if (indices) {
+                    for (let i = 0; i < length; ++i) {
+                        imageView.setUint32(4 * i, colors[fftBuffer[ymax - indices[i]]], true);
                     }
-                    freeBufferList.push(fftBuffer);
-                    renderingContext.putImageData(imageData, currentStep, 0);
-                });
-                setProgress((prevStep) => (prevStep as number) + 1);
-            };
-            abortSignal.onabort = () => {
-                bufferSource.stop();
-            };
-            setProgress(0);
-            return audioContext
-                .startRendering()
-                .then(() => {
-                    analysingTotalTime = performance.now() - startTime;
-                    setProgress(Infinity);
-                })
-                .catch((error: Error) => {
-                    setProgress(error);
-                });
-        }),
-    );
+                } else {
+                    fftBuffer.forEach((v, i) => {
+                        imageView.setUint32(4 * (ymax - i), colors[v], true);
+                    });
+                }
+                freeBufferList.push(fftBuffer);
+                renderingContext.putImageData(imageData, currentStep, 0);
+            });
+            setProgress((prevStep) => (prevStep as number) + 1);
+        };
+        abortSignal.onabort = () => {
+            bufferSource.stop();
+        };
+
+        setProgress(0);
+        bufferSource.start();
+        return audioContext
+            .startRendering()
+            .then(() => {
+                analysingTotalTime = performance.now() - startTime;
+                setProgress(Infinity);
+            })
+            .catch((error: Error) => {
+                setProgress(error);
+            });
+    });
 
     let stage!: HTMLDivElement;
     const targetSize = createElementSize(() => stage);
@@ -360,7 +340,7 @@ const SpectrumVisualizer: Component<{
                 rx *= duration;
                 ry *= duration;
                 batch(() => {
-                    const pixelWidth = untrack(channelPropList)?.[0]?.width;
+                    const width = untrack(pixelWidth);
                     const targetWidth = untrack(() => targetSize.width);
                     if (!pixelWidth || !targetWidth) return;
                     const unscaledCanvasWidth = targetWidth - axisYWidth;
@@ -370,7 +350,7 @@ const SpectrumVisualizer: Component<{
                             (newScale = clamp(
                                 (oldScale = scale) * pow(1.001, -ry),
                                 1,
-                                ((pixelWidth / unscaledCanvasWidth) * 2) / devicePixelRatio,
+                                ((width / unscaledCanvasWidth) * 2) / devicePixelRatio,
                             )),
                     );
                     setHorizontalScroll((oldScroll) =>
@@ -404,12 +384,12 @@ const SpectrumVisualizer: Component<{
             }}
             ref={stage}
         >
-            <Index each={channelPropList()}>
+            <Index each={canvasRefs()}>
                 {(item, index) => (
                     <ChannelSpectrum
-                        onCanvasChanged={item().ref}
-                        pixelWidth={item().width}
-                        pixelHeight={item().height}
+                        onCanvasChanged={item()[1]}
+                        pixelWidth={pixelWidth()}
+                        pixelHeight={pixelHeight()}
                         targetWidth={targetSize.width!}
                         targetHeight={
                             targetSize.height! / (isZoomedChannel(index) ? 1 : audioBuffer()!.numberOfChannels)

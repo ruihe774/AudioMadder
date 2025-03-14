@@ -31,43 +31,40 @@ interface Unresolved {
     state: "unresolved";
     loading: false;
     error: undefined;
-    latest: undefined;
     (): undefined;
 }
 interface Pending {
     state: "pending";
     loading: true;
     error: undefined;
-    latest: undefined;
     (): undefined;
 }
 interface Ready<T> {
     state: "ready";
     loading: false;
     error: undefined;
-    latest: T;
     (): T;
 }
 interface Refreshing<T> {
     state: "refreshing";
     loading: true;
     error: undefined;
-    latest: T;
     (): T;
 }
 interface Errored {
     state: "errored";
     loading: false;
     error: any;
-    latest: never;
     (): undefined;
 }
-export type AsyncSignal<T> = Unresolved | Pending | Ready<T> | Refreshing<T> | Errored;
+export type AsyncSignal<T> = (Unresolved | Pending | Ready<T> | Refreshing<T> | Errored) & {
+    abort: AbortController["abort"];
+};
 
 export function createAsync<T extends any[], R>(
     deps: { readonly [K in keyof T]: Accessor<T[K] | undefined> },
     fn: (abort: AbortSignal, ...args: T) => Promise<R>,
-): [AsyncSignal<R>, AbortController["abort"]] {
+): AsyncSignal<R> {
     let abortController: AbortController | undefined;
     const abort = (reason?: any): void => abortController?.abort(reason);
     onCleanup(abort);
@@ -75,7 +72,7 @@ export function createAsync<T extends any[], R>(
     const [state, setState] = createSignal<AsyncSignal<R>["state"]>("unresolved");
     const [loading, setLoading] = createSignal<AsyncSignal<R>["loading"]>(false);
     const [error, setError] = createSignal<AsyncSignal<R>["error"]>(void 0);
-    const [latest, setLatest] = createSignal<AsyncSignal<R>["latest"]>(void 0);
+    const [latest, setLatest] = createSignal<ReturnType<AsyncSignal<R>>>(void 0);
     let currentPromise: Promise<void> | undefined;
     createEffect(() => {
         abort();
@@ -128,11 +125,11 @@ export function createAsync<T extends any[], R>(
         loading: {
             get: loading,
         },
-        latest: {
-            get: latest,
+        abort: {
+            value: abort,
         },
     });
-    return [read as AsyncSignal<R>, abort];
+    return read as AsyncSignal<R>;
 }
 
 export function createThrottled<T>(source: Accessor<T | undefined>, timeout: number): Accessor<T | undefined> {
